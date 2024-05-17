@@ -64,7 +64,7 @@ example {x y : ℝ} (h : x ≤ y ∧ x ≠ y) : ¬y ≤ x :=
   fun h' ↦ h.right (le_antisymm h.left h')
 
 example {m n : ℕ} (h : m ∣ n ∧ m ≠ n) : m ∣ n ∧ ¬n ∣ m :=
-  sorry
+  ⟨h.1, fun h' ↦ h.2 (dvd_antisymm h.1 h')⟩
 
 example : ∃ x : ℝ, 2 < x ∧ x < 4 :=
   ⟨5 / 2, by norm_num, by norm_num⟩
@@ -101,15 +101,23 @@ example {x y : ℝ} (h : x ≤ y) : ¬y ≤ x ↔ x ≠ y := by
 example {x y : ℝ} (h : x ≤ y) : ¬y ≤ x ↔ x ≠ y :=
   ⟨fun h₀ h₁ ↦ h₀ (by rw [h₁]), fun h₀ h₁ ↦ h₀ (le_antisymm h h₁)⟩
 
+#check Iff
+#check Eq
 example {x y : ℝ} : x ≤ y ∧ ¬y ≤ x ↔ x ≤ y ∧ x ≠ y :=
-  sorry
+  Iff.intro (fun h ↦ ⟨h.1, fun h' ↦ by
+    have : _ := h.2
+    rw [h'] at this; exact this (le_refl y)
+    ⟩) (fun h ↦ ⟨h.1, fun h' ↦ h.2 (le_antisymm h.1 h')⟩)
 
 theorem aux {x y : ℝ} (h : x ^ 2 + y ^ 2 = 0) : x = 0 :=
-  have h' : x ^ 2 = 0 := by sorry
+  have h' : x ^ 2 = 0 := by
+    apply le_antisymm; have hy : _ := pow_two_nonneg y
+    rw [← h] at hy; linarith [hy];
+    exact pow_two_nonneg x
   pow_eq_zero h'
 
 example (x y : ℝ) : x ^ 2 + y ^ 2 = 0 ↔ x = 0 ∧ y = 0 :=
-  sorry
+  Iff.intro (fun h ↦ ⟨aux h, (by rw [add_comm] at h; exact aux h)⟩) (fun h ↦ (by rw[h.1, h.2]; norm_num))
 
 section
 
@@ -130,7 +138,7 @@ theorem not_monotone_iff {f : ℝ → ℝ} : ¬Monotone f ↔ ∃ x y, x ≤ y �
   rfl
 
 example : ¬Monotone fun x : ℝ ↦ -x := by
-  sorry
+  apply not_monotone_iff.mpr; exact ⟨0, 1, ⟨by norm_num, by norm_num⟩⟩
 
 section
 variable {α : Type*} [PartialOrder α]
@@ -138,7 +146,10 @@ variable (a b : α)
 
 example : a < b ↔ a ≤ b ∧ a ≠ b := by
   rw [lt_iff_le_not_le]
-  sorry
+  exact Iff.intro (fun h ↦ ⟨h.1, fun h' ↦ by
+    have : _ := h.2
+    rw [h'] at this; exact this (le_refl b)
+    ⟩) (fun h ↦ ⟨h.1, fun h' ↦ h.2 (le_antisymm h.1 h')⟩)
 
 end
 
@@ -148,10 +159,11 @@ variable (a b c : α)
 
 example : ¬a < a := by
   rw [lt_iff_le_not_le]
-  sorry
+  exact and_not_self
 
 example : a < b → b < c → a < c := by
   simp only [lt_iff_le_not_le]
-  sorry
+  rintro ⟨h1, h2⟩ ⟨h3, _⟩
+  exact ⟨le_trans h1 h3, fun h5 ↦ h2 (le_trans h3 h5)⟩
 
 end
