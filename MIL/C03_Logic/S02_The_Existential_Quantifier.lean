@@ -50,7 +50,7 @@ example (ubf : FnHasUb f) (ubg : FnHasUb g) : FnHasUb fun x ↦ f x + g x := by
   rcases ubg with ⟨b, ubgb⟩
   use a + b
   apply fnUb_add ubfa ubgb
-
+#check Exists
 example (lbf : FnHasLb f) (lbg : FnHasLb g) : FnHasLb fun x ↦ f x + g x := by
   rcases lbf with ⟨a, ha⟩; rcases lbg with ⟨b, hb⟩
   exact ⟨a + b, fun x ↦ add_le_add (ha x) (hb x)⟩
