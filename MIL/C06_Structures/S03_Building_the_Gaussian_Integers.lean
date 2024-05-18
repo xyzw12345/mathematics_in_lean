@@ -273,6 +273,6 @@ instance : EuclideanDomain gaussInt :=
     mul_left_not_lt := not_norm_mul_left_lt_norm }
 
 example (x : gaussInt) : Irreducible x ↔ Prime x :=
-  PrincipalIdealRing.irreducible_iff_prime
+  irreducible_iff_prime
 
 end gaussInt
