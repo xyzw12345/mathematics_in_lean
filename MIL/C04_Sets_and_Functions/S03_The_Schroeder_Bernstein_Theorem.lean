@@ -50,15 +50,20 @@ theorem sb_injective (hf : Injective f) : Injective (sbFun f g) := by
       rw [if_pos x₁A, if_neg x₂nA] at hxeq
       rw [A_def, sbSet, mem_iUnion] at x₁A
       have x₂eq : x₂ = g (f x₁) := by
-        sorry
+        rw [hxeq, sb_right_inv f g x₂nA]
       rcases x₁A with ⟨n, hn⟩
       rw [A_def, sbSet, mem_iUnion]
       use n + 1
       simp [sbAux]
       exact ⟨x₁, hn, x₂eq.symm⟩
-    sorry
+    simp only [x₁A, ↓reduceIte, x₂A] at hxeq
+    exact hf hxeq
   push_neg  at xA
-  sorry
+  simp only [xA, ↓reduceIte] at hxeq
+  calc
+  _= g (invFun g x₁) := by symm; apply invFun_eq; sorry
+  _= g (invFun g x₂) := by rw [hxeq]
+  _= x₂ := by sorry
 
 theorem sb_surjective (hf : Injective f) (hg : Injective g) : Surjective (sbFun f g) := by
   set A := sbSet f g with A_def
