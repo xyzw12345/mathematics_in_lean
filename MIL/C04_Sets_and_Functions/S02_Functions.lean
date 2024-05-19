@@ -154,13 +154,25 @@ example : range exp = { y | y > 0 } := by
   rw [exp_log ypos]
 
 example : InjOn sqrt { x | x ≥ 0 } := by
-  sorry
+  intro x xnng y ynng h
+  calc
+   _= x.sqrt ^ 2 := by exact (sq_sqrt xnng).symm
+   _= y.sqrt ^ 2 := by rw [h]
+   _= y := by exact sq_sqrt ynng
 
 example : InjOn (fun x ↦ x ^ 2) { x : ℝ | x ≥ 0 } := by
-  sorry
+  intro x xnng y ynng h; simp only at h
+  calc
+    x = (x ^ 2).sqrt := by exact (sqrt_sq xnng).symm
+      _= (y ^ 2).sqrt := by rw [h]
+      _= y := by exact sqrt_sq ynng
 
 example : sqrt '' { x | x ≥ 0 } = { y | y ≥ 0 } := by
-  sorry
+  apply Subset.antisymm
+  · intro x ⟨z, znng, hz⟩
+    simp only [ge_iff_le, mem_setOf_eq]; rw [← hz]; positivity
+  · intro y ynng; simp only [ge_iff_le, mem_setOf_eq] at ynng
+    use y ^ 2; exact ⟨by rw [mem_setOf_eq]; exact pow_two_nonneg y, by exact sqrt_sq ynng⟩
 
 example : (range fun x ↦ x ^ 2) = { y : ℝ | y ≥ 0 } := by
   sorry
