@@ -60,10 +60,22 @@ theorem sb_injective (hf : Injective f) : Injective (sbFun f g) := by
     exact hf hxeq
   push_neg  at xA
   simp only [xA, ↓reduceIte] at hxeq
+  have h1: x₁ ∈ g '' univ := by
+    have : _ := xA.1; rw [A_def] at this; unfold sbSet at this
+    have : x₁ ∉ sbAux f g 0 := by simp only [mem_iUnion, not_exists] at this; exact this 0
+    unfold sbAux at this; simp only [image_univ, mem_diff, mem_univ, mem_range, not_exists,
+      true_and, not_forall, Decidable.not_not] at this; simp only [image_univ, mem_range];
+    assumption
+  have h2: x₂ ∈ g '' univ := by
+    have : _ := xA.2; rw [A_def] at this; unfold sbSet at this
+    have : x₂ ∉ sbAux f g 0 := by simp only [mem_iUnion, not_exists] at this; exact this 0
+    unfold sbAux at this; simp only [image_univ, mem_diff, mem_univ, mem_range, not_exists,
+      true_and, not_forall, Decidable.not_not] at this; simp only [image_univ, mem_range];
+    assumption
   calc
-  _= g (invFun g x₁) := by symm; apply invFun_eq; sorry
+  _= g (invFun g x₁) := by symm; apply invFun_eq; simp only [image_univ, mem_range] at h1; assumption
   _= g (invFun g x₂) := by rw [hxeq]
-  _= x₂ := by sorry
+  _= x₂ := by apply invFun_eq; simp only [image_univ, mem_range] at h2; assumption
 
 theorem sb_surjective (hf : Injective f) (hg : Injective g) : Surjective (sbFun f g) := by
   set A := sbSet f g with A_def
@@ -82,7 +94,11 @@ theorem sb_surjective (hf : Injective f) (hg : Injective g) : Surjective (sbFun 
       exact ⟨n, xmem⟩
     simp only [h_def, sbFun, if_pos this]
     exact hg hx
-  sorry
+  · have : _ := sb_right_inv f g gyA
+    use (g y); simp only [h_def, sbFun, gyA, ↓reduceIte]; apply hg; exact this
+
+
+
 
 end
 
