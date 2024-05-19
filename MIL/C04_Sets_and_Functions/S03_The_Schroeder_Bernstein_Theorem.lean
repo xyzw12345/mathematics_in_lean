@@ -28,10 +28,10 @@ theorem sb_right_inv {x : α} (hx : x ∉ sbSet f g) : g (invFun g x) = x := by
     rw [sbSet, mem_iUnion]
     use 0
     rw [sbAux, mem_diff]
-    sorry
+    simp only [mem_univ, true_and]; exact hx
   have : ∃ y, g y = x := by
-    sorry
-  sorry
+    simp only [image_univ, mem_range] at this; exact this
+  rw [invFun_eq this]
 
 theorem sb_injective (hf : Injective f) : Injective (sbFun f g) := by
   set A := sbSet f g with A_def
