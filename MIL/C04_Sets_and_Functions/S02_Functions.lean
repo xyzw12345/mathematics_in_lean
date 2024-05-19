@@ -121,10 +121,14 @@ example (i : I) (injf : Injective f) : (⋂ i, f '' A i) ⊆ f '' ⋂ i, A i := 
   · exact hy
 
 example : (f ⁻¹' ⋃ i, B i) = ⋃ i, f ⁻¹' B i := by
-  sorry
+  apply Subset.antisymm
+  · intro x; simp only [preimage_iUnion, mem_iUnion, mem_preimage, imp_self]
+  · intro x; simp only [mem_iUnion, mem_preimage, preimage_iUnion, imp_self]
 
 example : (f ⁻¹' ⋂ i, B i) = ⋂ i, f ⁻¹' B i := by
-  sorry
+  apply Subset.antisymm
+  · intro x; simp only [mem_preimage, mem_iInter, imp_self]
+  · intro x; simp only [mem_iInter, mem_preimage, imp_self]
 
 example : InjOn f s ↔ ∀ x₁ ∈ s, ∀ x₂ ∈ s, f x₁ = f x₂ → x₁ = x₂ :=
   Iff.refl _
@@ -169,13 +173,18 @@ example : InjOn (fun x ↦ x ^ 2) { x : ℝ | x ≥ 0 } := by
 
 example : sqrt '' { x | x ≥ 0 } = { y | y ≥ 0 } := by
   apply Subset.antisymm
-  · intro x ⟨z, znng, hz⟩
+  · intro x ⟨z, _, hz⟩
     simp only [ge_iff_le, mem_setOf_eq]; rw [← hz]; positivity
   · intro y ynng; simp only [ge_iff_le, mem_setOf_eq] at ynng
     use y ^ 2; exact ⟨by rw [mem_setOf_eq]; exact pow_two_nonneg y, by exact sqrt_sq ynng⟩
 
 example : (range fun x ↦ x ^ 2) = { y : ℝ | y ≥ 0 } := by
-  sorry
+  apply Subset.antisymm;
+  · intro x ⟨y, hy⟩; simp only at hy; simp only [ge_iff_le, mem_setOf_eq];
+    rw [← hy]; positivity
+  · intro y hy; simp only [mem_range]; simp only [ge_iff_le, mem_setOf_eq] at hy
+    use y.sqrt; exact sq_sqrt hy
+
 
 end
 
@@ -206,11 +215,16 @@ variable (f : α → β)
 
 open Function
 
-example : Injective f ↔ LeftInverse (inverse f) f :=
-  sorry
+example : Injective f ↔ LeftInverse (inverse f) f := by
+  apply Iff.intro;
+  · intro h; unfold LeftInverse; intro x
+    apply h; rw [inverse_spec (f := f) (f x) ⟨x, by rfl⟩]
+  · intro h; intro x y heq; rw [← h x, ← h y, heq]
 
-example : Surjective f ↔ RightInverse (inverse f) f :=
-  sorry
+example : Surjective f ↔ RightInverse (inverse f) f := by
+  apply Iff.intro
+  · intro h; intro x; exact inverse_spec (f := f) x (h x)
+  · intro h; intro y; use (inverse f) y; exact h y
 
 end
 
@@ -226,10 +240,10 @@ theorem Cantor : ∀ f : α → Set α, ¬Surjective f := by
     intro h'
     have : j ∉ f j := by rwa [h] at h'
     contradiction
-  have h₂ : j ∈ S
-  sorry
-  have h₃ : j ∉ S
-  sorry
+  have h₂ : j ∈ S := by
+    show j ∈ { i | i ∉ f i }; simp only [Set.mem_setOf_eq]; exact h₁
+  have h₃ : j ∉ S := by
+    rw [← h]; exact h₁
   contradiction
 
 -- COMMENTS: TODO: improve this
