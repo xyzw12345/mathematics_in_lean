@@ -101,15 +101,24 @@ variable {I : Type*} (A : I → Set α) (B : I → Set β)
 
 example : (f '' ⋃ i, A i) = ⋃ i, f '' A i := by
   apply Subset.antisymm
-  · intro x ⟨y, yai, hy⟩; have : ∃ i, y ∈ A i := by exact exists_exists_eq_and.mp yai
-    sorry
-  sorry
+  · intro x ⟨y, yai, hy⟩; have : ∃ i, y ∈ A i := by exact exists_exists_eq_and.mp yai;; rcases this with ⟨i, yi⟩
+    simp only [mem_iUnion, mem_image]; exact ⟨i, ⟨y, yi, hy⟩⟩
+  · simp only [iUnion_subset_iff, image_subset_iff]; intro i x xi;
+    show f x ∈ f '' ⋃ i, A i; simp only [mem_image, mem_iUnion];
+    exact ⟨x, ⟨i, xi⟩, by rfl⟩
 
 example : (f '' ⋂ i, A i) ⊆ ⋂ i, f '' A i := by
-  sorry
+  intro x ⟨y, yai, hy⟩
+  simp only [mem_iInter] at yai; simp only [mem_iInter, mem_image];
+  exact fun i ↦ ⟨y, ⟨yai i, hy⟩⟩
 
 example (i : I) (injf : Injective f) : (⋂ i, f '' A i) ⊆ f '' ⋂ i, A i := by
-  sorry
+  intro x xai; simp only [mem_iInter, mem_image] at xai;
+  rcases xai i with ⟨y, _, hy⟩; use y; constructor
+  · simp only [mem_iInter]; intro j; rcases xai j with ⟨y', y'ai, hy'⟩
+    have : y' = y := by apply injf; rw [hy, hy']
+    rw [this] at y'ai; exact y'ai
+  · exact hy
 
 example : (f ⁻¹' ⋃ i, B i) = ⋃ i, f ⁻¹' B i := by
   sorry
