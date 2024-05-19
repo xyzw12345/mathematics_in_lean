@@ -34,53 +34,75 @@ example : s ⊆ f ⁻¹' (f '' s) := by
   use x, xs
 
 example : f '' s ⊆ v ↔ s ⊆ f ⁻¹' v := by
-  sorry
+  apply Iff.intro;
+  · rintro h x xs; unfold preimage; simp only [mem_setOf_eq];
+    have : f x ∈ f '' s := by simp only [mem_image]; use x
+    exact h this
+  · rintro h x ⟨y, ys, hy⟩; have : _ := h ys; rw [← hy];
+    assumption
 
 example (h : Injective f) : f ⁻¹' (f '' s) ⊆ s := by
-  sorry
+  intro x ⟨y, ys, hy⟩; have : _ := h hy; rw[← this]; exact ys
 
 example : f '' (f ⁻¹' u) ⊆ u := by
-  sorry
+  intro x ⟨y, ys, hy⟩; rw [← hy]; assumption
 
 example (h : Surjective f) : u ⊆ f '' (f ⁻¹' u) := by
-  sorry
+  intro x xu; rcases h x with ⟨y, hy⟩;
+  have : y ∈ f⁻¹' u := by show f y ∈ u; rw [hy]; exact xu
+  use y
 
 example (h : s ⊆ t) : f '' s ⊆ f '' t := by
-  sorry
+  intro x ⟨y, ys, hy⟩; rw [← hy]; use y; exact ⟨h ys, by rfl⟩
 
 example (h : u ⊆ v) : f ⁻¹' u ⊆ f ⁻¹' v := by
-  sorry
+  intro x hx; simp only [mem_preimage] at hx; show f x ∈ v; exact h hx
 
 example : f ⁻¹' (u ∪ v) = f ⁻¹' u ∪ f ⁻¹' v := by
-  sorry
+  apply Subset.antisymm;
+  · intro x hx; simp only [preimage_union, mem_union, mem_preimage] at hx; assumption
+  · rintro x (hu | hv); left; exact hu; right; exact hv;
 
 example : f '' (s ∩ t) ⊆ f '' s ∩ f '' t := by
-  sorry
+  intro x ⟨y, ⟨ys, yt⟩, hy⟩; exact ⟨⟨y, ys, hy⟩, ⟨y, yt, hy⟩⟩
 
 example (h : Injective f) : f '' s ∩ f '' t ⊆ f '' (s ∩ t) := by
-  sorry
+  intro x ⟨⟨y, ys, hy⟩, ⟨z, zt, hz⟩⟩
+  have : y = z := by apply h; rw [hy, hz];
+  rw [← this] at zt; exact ⟨y, ⟨ys, zt⟩, hy⟩
 
 example : f '' s \ f '' t ⊆ f '' (s \ t) := by
-  sorry
+  intro x h; rcases h.1 with ⟨y, ys, hy⟩;
+  use y; exact ⟨⟨ys, fun yt ↦ h.2 ⟨y, yt, hy⟩⟩, hy⟩
 
 example : f ⁻¹' u \ f ⁻¹' v ⊆ f ⁻¹' (u \ v) := by
-  sorry
+  intro x h; assumption
 
 example : f '' s ∩ v = f '' (s ∩ f ⁻¹' v) := by
-  sorry
+  apply Subset.antisymm
+  · intro x ⟨⟨y, ys, hy⟩, xv⟩; use y; rw[← hy] at xv; exact ⟨⟨ys, xv⟩, hy⟩
+  · intro x ⟨y, ⟨ys, yv⟩, hy⟩; simp only [mem_preimage] at yv; rw [hy] at yv
+    exact ⟨⟨y, ys, hy⟩, yv⟩
 
 example : f '' (s ∩ f ⁻¹' u) ⊆ f '' s ∩ u := by
-  sorry
+  intro x ⟨y, ⟨ys, xu⟩, hy⟩; simp only [mem_preimage] at xu; rw [hy] at xu;
+  exact ⟨⟨y, ys, hy⟩, xu⟩
 
 example : s ∩ f ⁻¹' u ⊆ f ⁻¹' (f '' s ∩ u) := by
-  sorry
+  intro x ⟨xs, yu⟩; simp only [mem_preimage] at yu; show f x ∈ f '' s ∩ u
+  exact ⟨⟨x, xs, by rfl⟩, yu⟩
 
 example : s ∪ f ⁻¹' u ⊆ f ⁻¹' (f '' s ∪ u) := by
-  sorry
+  rintro x (xs | yu)
+  · left; exact ⟨x, xs, by rfl⟩
+  · right; exact yu
 
 variable {I : Type*} (A : I → Set α) (B : I → Set β)
 
 example : (f '' ⋃ i, A i) = ⋃ i, f '' A i := by
+  apply Subset.antisymm
+  · intro x ⟨y, yai, hy⟩; have : ∃ i, y ∈ A i := by exact exists_exists_eq_and.mp yai
+    sorry
   sorry
 
 example : (f '' ⋂ i, A i) ⊆ ⋂ i, f '' A i := by
