@@ -46,18 +46,23 @@ theorem exists_prime_factor {n : Nat} (h : 2 ≤ n) : ∃ p : Nat, p.Prime ∧ p
 theorem primes_infinite : ∀ n, ∃ p > n, Nat.Prime p := by
   intro n
   have : 2 ≤ Nat.factorial (n + 1) + 1 := by
-    sorry
+    simp only [Nat.reduceLeDiff]
+    induction' n with n ih
+    · simp only [zero_add, Nat.factorial_one, le_refl]
+    · rw [Nat.factorial_succ, ← mul_one 1]; apply mul_le_mul
+      omega; rw[mul_one]; exact ih; omega; omega
   rcases exists_prime_factor this with ⟨p, pp, pdvd⟩
   refine' ⟨p, _, pp⟩
   show p > n
   by_contra ple
   push_neg  at ple
   have : p ∣ Nat.factorial (n + 1) := by
-    sorry
+    apply Nat.dvd_factorial; exact Nat.Prime.pos pp; omega
   have : p ∣ 1 := by
-    sorry
+    have : 1 = ((n + 1).factorial + 1) - (n + 1).factorial := by simp only [add_tsub_cancel_left]
+    rw [this]; apply Nat.dvd_sub; omega; assumption; assumption
   show False
-  sorry
+  simp only [Nat.dvd_one] at this; rw[this] at pp; absurd pp; norm_num
 open Finset
 
 section
@@ -90,9 +95,18 @@ section
 variable {α : Type*} [DecidableEq α] (r s t : Finset α)
 
 example : (r ∪ s) ∩ (r ∪ t) = r ∪ s ∩ t := by
-  sorry
+  apply Subset.antisymm
+  · rintro x hx; simp only [mem_inter, mem_union] at hx;
+    simp only [mem_union, mem_inter]; tauto
+  · rintro x hx; simp only [mem_union, mem_inter] at hx;
+    simp only [mem_inter, mem_union]; tauto
+
 example : (r \ s) \ t = r \ (s ∪ t) := by
-  sorry
+  apply Subset.antisymm
+  · rintro x hx; simp only [mem_sdiff] at hx
+    simp only [mem_sdiff, mem_union, not_or]; tauto
+  · rintro x hx; simp only [mem_sdiff, mem_union, not_or] at hx
+    simp only [mem_sdiff]; tauto
 
 end
 
@@ -103,6 +117,7 @@ theorem _root_.Nat.Prime.eq_of_dvd_of_prime {p q : ℕ}
       (prime_p : Nat.Prime p) (prime_q : Nat.Prime q) (h : p ∣ q) :
     p = q := by
   sorry
+
 
 theorem mem_of_dvd_prod_primes {s : Finset ℕ} {p : ℕ} (prime_p : p.Prime) :
     (∀ n ∈ s, Nat.Prime n) → (p ∣ ∏ n in s, n) → p ∈ s := by
@@ -225,4 +240,3 @@ theorem primes_mod_4_eq_3_infinite : ∀ n, ∃ p > n, Nat.Prime p ∧ p % 4 = 3
   have : p = 3 := by
     sorry
   contradiction
-

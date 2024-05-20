@@ -117,6 +117,13 @@ example : s \ t ∪ t \ s = (s ∪ t) \ (s ∩ t) := by
     · left; exact ⟨h1, fun h ↦ h3 ⟨h1, h⟩⟩
     · right; exact ⟨h2, fun h ↦ h3 ⟨h, h2⟩⟩
 
+example (A B C D : Set α) : (A ∩ B) \ (C ∩ D) ⊆ (A \ C) ∪ (B \ D) := by
+  rintro x ⟨⟨xA, xB⟩, h⟩
+  rcases em (x ∈ C) with (xc | xnc)
+  · right; exact ⟨xB, fun xd ↦ h ⟨xc, xd⟩⟩
+  · left; exact ⟨xA, xnc⟩
+
+
 def evens : Set ℕ :=
   { n | Even n }
 
