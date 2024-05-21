@@ -56,6 +56,13 @@ def permGroup {α : Type*} : Group₁ (Equiv.Perm α)
 structure AddGroup₁ (α : Type*) where
   (add : α → α → α)
   -- fill in the rest
+  zero : α
+  neg : α → α
+  add_comm : ∀ x y : α, add x y = add y x
+  add_assoc : ∀ x y z : α, add (add x y) z = add x (add y z)
+  add_zero : ∀ x : α, add x zero = x
+  add_neg : ∀ x : α, add x (neg x) = zero
+
 @[ext]
 structure Point where
   x : ℝ
@@ -67,11 +74,17 @@ namespace Point
 def add (a b : Point) : Point :=
   ⟨a.x + b.x, a.y + b.y, a.z + b.z⟩
 
-def neg (a : Point) : Point := sorry
+def neg (a : Point) : Point :=
+  ⟨-a.x, -a.y, -a.z⟩
 
-def zero : Point := sorry
+def zero : Point :=
+  ⟨0, 0, 0⟩
 
-def addGroupPoint : AddGroup₁ Point := sorry
+def addGroupPoint : AddGroup₁ Point :=
+  ⟨add, zero, neg, by intro a b; rw [add, add]; ext; repeat' simp only; rw[add_comm] ,
+    by intro a b c; rw [add, add, add, add]; ext; repeat' simp only; rw [add_assoc],
+    by intro a; rw [add, zero]; ext; repeat' simp only; rw [add_zero],
+    by intro a; rw [add, neg, zero]; ext; repeat' simp only; rw [add_comm, add_left_neg]⟩
 
 end Point
 
@@ -171,3 +184,30 @@ end
 class AddGroup₂ (α : Type*) where
   add : α → α → α
   -- fill in the rest
+  zero : α
+  neg : α → α
+  add_comm : ∀ x y : α, add x y = add y x
+  add_assoc : ∀ x y z : α, add (add x y) z = add x (add y z)
+  add_zero : ∀ x : α, add x zero = x
+  add_neg : ∀ x : α, add x (neg x) = zero
+
+instance hasAddAddGroup₂ {α : Type*} [AddGroup₂ α] : Add α :=
+  ⟨AddGroup₂.add⟩
+
+instance hasZeroAddGroup₂ {α : Type*} [AddGroup₂ α] : Zero α :=
+  ⟨AddGroup₂.zero⟩
+
+instance hasNegAddGroup₂ {α : Type*} [AddGroup₂ α] : Neg α :=
+  ⟨AddGroup₂.neg⟩
+
+instance : AddGroup₂ Point where
+  add := Point.add
+  zero := Point.zero
+  neg := Point.neg
+  add_comm := by intro a b; rw [Point.add, Point.add]; ext; repeat' simp only; rw[add_comm]
+  add_assoc := by intro a b c; rw [Point.add, Point.add, Point.add, Point.add]; ext; repeat' simp only; rw [add_assoc]
+  add_zero := by intro a; rw [Point.add, Point.zero]; ext; repeat' simp only; rw [add_zero]
+  add_neg := by intro a; rw [Point.add, Point.neg, Point.zero]; ext; repeat' simp only; rw [add_comm, add_left_neg]
+
+variable (x y : Point)
+#check x + (-y) + 0
