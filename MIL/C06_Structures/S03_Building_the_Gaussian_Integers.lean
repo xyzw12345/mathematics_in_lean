@@ -171,7 +171,7 @@ theorem abs_mod'_le (a b : ℤ) (h : 0 < b) : |mod' a b| ≤ b / 2 := by
   have := Int.emod_lt_of_pos (a + b / 2) h
   have := Int.ediv_add_emod b 2
   have := Int.emod_lt_of_pos b zero_lt_two
-  revert this; intro this -- FIXME, this should not be needed
+  -- revert this; intro this -- FIXME, this should not be needed
   linarith
 
 theorem mod'_eq (a b : ℤ) : mod' a b = a - b * div' a b := by linarith [div'_add_mod' a b]
@@ -180,7 +180,19 @@ end Int
 
 theorem sq_add_sq_eq_zero {α : Type*} [LinearOrderedRing α] (x y : α) :
     x ^ 2 + y ^ 2 = 0 ↔ x = 0 ∧ y = 0 := by
-  sorry
+  apply Iff.intro
+  · intro h
+    have : x ^ 2 + y ^ 2 ≤ x ^ 2 := by rw [h]; exact sq_nonneg x
+    have : y ^ 2 ≤ 0 := by simp only [add_le_iff_nonpos_right] at this; exact this
+    have : y ^ 2 = 0 := le_antisymm this (sq_nonneg y)
+    have yeq0 : y = 0 := by simp only [ne_eq, OfNat.ofNat_ne_zero, not_false_eq_true, pow_eq_zero_iff] at this; exact this
+    have : x ^ 2 + y ^ 2 ≤ y ^ 2 := by rw [h]; exact sq_nonneg y
+    have : x ^ 2 ≤ 0 := by simp only [add_le_iff_nonpos_left] at this; exact this
+    have : x ^ 2 = 0 := le_antisymm this (sq_nonneg x)
+    have xeq0 : x = 0 := by simp only [ne_eq, OfNat.ofNat_ne_zero, not_false_eq_true, pow_eq_zero_iff] at this; exact this
+    exact ⟨xeq0, yeq0⟩
+  · intro ⟨hx, hy⟩; rw [hx, hy]; simp only [ne_eq, OfNat.ofNat_ne_zero, not_false_eq_true,
+    zero_pow, add_zero]
 namespace gaussInt
 
 def norm (x : gaussInt) :=
@@ -188,13 +200,20 @@ def norm (x : gaussInt) :=
 
 @[simp]
 theorem norm_nonneg (x : gaussInt) : 0 ≤ norm x := by
-  sorry
+  unfold norm; exact add_nonneg (sq_nonneg x.re) (sq_nonneg x.im)
+
 theorem norm_eq_zero (x : gaussInt) : norm x = 0 ↔ x = 0 := by
-  sorry
+  rw [gaussInt.ext_iff, zero_re, zero_im, norm]; exact sq_add_sq_eq_zero x.re x.im
+
 theorem norm_pos (x : gaussInt) : 0 < norm x ↔ x ≠ 0 := by
-  sorry
+  have : 0 < norm x ↔ ¬ norm x = 0 := by
+    apply Iff.intro
+    intro h hx; absurd h; rw [hx]; norm_num
+    intro h; by_contra h'; push_neg at h'; exact h (le_antisymm h' (norm_nonneg x))
+  rw [this, norm_eq_zero]
+
 theorem norm_mul (x y : gaussInt) : norm (x * y) = norm x * norm y := by
-  sorry
+  rw [mul_def, norm, norm, norm]; simp only; ring
 def conj (x : gaussInt) : gaussInt :=
   ⟨x.re, -x.im⟩
 
@@ -246,7 +265,7 @@ theorem coe_natAbs_norm (x : gaussInt) : (x.norm.natAbs : ℤ) = x.norm :=
 theorem natAbs_norm_mod_lt (x y : gaussInt) (hy : y ≠ 0) :
     (x % y).norm.natAbs < y.norm.natAbs := by
   apply Int.ofNat_lt.1
-  simp only [Int.coe_natAbs, abs_of_nonneg, norm_nonneg]
+  simp only [Int.natCast_natAbs, abs_of_nonneg, norm_nonneg]
   apply norm_mod_lt x hy
 
 theorem not_norm_mul_left_lt_norm (x : gaussInt) {y : gaussInt} (hy : y ≠ 0) :
