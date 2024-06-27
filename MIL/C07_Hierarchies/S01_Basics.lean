@@ -113,12 +113,12 @@ example {M : Type} [Monoid₁ M] {a b c : M} (hba : b ⋄ a = 𝟙) (hac : a ⋄
   rw [← one_dia c, ← hba, dia_assoc, hac, dia_one b]
 
 
-lemma inv_eq_of_dia [Group₁ G] {a b : G} (h : a ⋄ b = 𝟙) : a⁻¹ = b :=
-  sorry
+lemma inv_eq_of_dia [Group₁ G] {a b : G} (h : a ⋄ b = 𝟙) : a⁻¹ = b := by
+  rw [← one_dia b, ← inv_dia a, dia_assoc, h, dia_one]
 
-lemma dia_inv [Group₁ G] (a : G) : a ⋄ a⁻¹ = 𝟙 :=
-  sorry
-
+lemma dia_inv [Group₁ G] (a : G) : a ⋄ a⁻¹ = 𝟙 := by
+  rw [← one_dia (a ⋄ a⁻¹)]; nth_rw 1 [← inv_dia a⁻¹];
+  rw [← dia_assoc, dia_assoc a⁻¹⁻¹, inv_dia, dia_one, inv_dia]
 
 
 
@@ -157,6 +157,8 @@ class CommSemigroup₃ (α : Type) extends Semigroup₃ α where
 
 class AddCommMonoid₃ (α : Type) extends AddMonoid₃ α, AddCommSemigroup₃ α
 
+#check AddCommMonoid₃.toAddMonoid₃
+
 @[to_additive AddCommMonoid₃]
 class CommMonoid₃ (α : Type) extends Monoid₃ α, CommSemigroup₃ α
 
@@ -173,8 +175,8 @@ attribute [simp] Group₃.inv_mul AddGroup₃.neg_add
 
 
 @[to_additive]
-lemma inv_eq_of_mul [Group₃ G] {a b : G} (h : a * b = 1) : a⁻¹ = b :=
-  sorry
+lemma inv_eq_of_mul [Group₃ G] {a b : G} (h : a * b = 1) : a⁻¹ = b := by
+  rw [← mul_one a⁻¹, ← h, ← mul_assoc₃ a⁻¹ a b, Group₃.inv_mul, one_mul]
 
 
 @[to_additive (attr := simp)]

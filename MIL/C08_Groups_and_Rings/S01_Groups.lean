@@ -229,7 +229,9 @@ example {G : Type*} [Group G] (H : Subgroup G) : G ≃ (G ⧸ H) × H :=
 variable {G : Type*} [Group G]
 
 lemma conjugate_one (H : Subgroup G) : conjugate 1 H = H := by
-  sorry
+  unfold conjugate
+  simp only [one_mul, inv_one, mul_one, exists_eq_right']
+  rfl
 
 instance : MulAction G (Subgroup G) where
   smul := conjugate
