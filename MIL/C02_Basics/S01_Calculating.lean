@@ -1,13 +1,16 @@
 import MIL.Common
 import Mathlib.Data.Real.Basic
+
 -- An example.
 example (a b c : ℝ) : a * b * c = b * (a * c) := by
-  rw [mul_comm a b]
-  rw [mul_assoc b a c]
+  have h1 : a * b = b * a := mul_comm a b
+  have h2 : (b * a) * c = b * (a * c) := mul_assoc b a c
+  rw [h1]
+  rw [h2]
 
 -- Try these.
 example (a b c : ℝ) : c * b * a = b * (a * c) := by
-  rw[mul_comm c b, mul_assoc b c a, mul_comm c a]
+  rw [mul_comm c b, mul_assoc b c a, mul_comm c a]
 
 example (a b c : ℝ) : a * (b * c) = b * (a * c) := by
   rw[← mul_assoc a b c, mul_comm a b, mul_assoc b a c]
@@ -36,8 +39,8 @@ example (a b c d e f : ℝ) (h : b * c = e * f) : a * b * c * d = a * e * f * d 
   rw[mul_assoc a b c, h, ← mul_assoc a e f]
 
 example (a b c d : ℝ) (hyp : c = b * a - d) (hyp' : d = a * b) : c = 0 := by
-  rw[hyp, hyp', mul_comm]
-  exact sub_eq_zero_of_eq rfl
+  rw[hyp', mul_comm, sub_self] at hyp
+  rw [hyp]
 
 example (a b c d e f : ℝ) (h : a * b = c * d) (h' : e = f) : a * (b * e) = c * (d * f) := by
   rw [h', ← mul_assoc, h, mul_assoc]

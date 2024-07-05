@@ -24,6 +24,8 @@ def myPoint1 : Point where
   y := -1
   z := 4
 
+#check Point.x
+
 def myPoint2 : Point :=
   ⟨2, -1, 4⟩
 

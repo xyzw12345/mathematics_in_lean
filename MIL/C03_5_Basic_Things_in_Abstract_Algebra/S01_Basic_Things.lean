@@ -1,9 +1,14 @@
-import Mathlib
+import Mathlib.Algebra.Groups.Basic
 
 section Basic_Calculations
 
 example {G : Type*} [Group G] (g : G) (h : ∃ f : G, f * g * f⁻¹ = 1) : g = 1 := by
-  sorry
+  rcases h with ⟨f, hf⟩
+  have : f * g * f⁻¹ = 1 := hf
+  calc
+  _ = f⁻¹ * (f * g * f⁻¹) * f := by group
+  _ = f⁻¹ * 1 * f := by rw [hf]
+  _ = _ :=
 
 example {G : Type*} [Group G] (f g h : G) : ∃ x : G, f * x * g = h := by
   sorry

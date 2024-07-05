@@ -4,6 +4,25 @@ import Mathlib.Data.Real.Basic
 set_option autoImplicit true
 
 namespace C03S02
+-- α β => α × β
+-- P Q => P ∧ Q
+-- ⟨a, b⟩
+
+-- constructor
+-- P ∧ Q
+-- P
+-- Q
+
+-- α β => α ⊕ β
+-- P => P ∨ Q Or.inl  / left
+-- Q => P ∨ Q Or.inr  / right
+-- h : P ∨ Q
+-- rcases h with (hl | hr)
+-- hl : P
+-- hr : Q
+
+-- ¬ P
+-- P -> False
 
 example : ∃ x : ℝ, 2 < x ∧ x < 3 := by
   use 5 / 2
@@ -51,6 +70,12 @@ example (ubf : FnHasUb f) (ubg : FnHasUb g) : FnHasUb fun x ↦ f x + g x := by
   use a + b
   apply fnUb_add ubfa ubgb
 #check Exists
+
+-- h : ∃ x : α, p x
+-- rcases h with ⟨x, hx⟩
+-- x : α
+-- hx : p x
+
 example (lbf : FnHasLb f) (lbg : FnHasLb g) : FnHasLb fun x ↦ f x + g x := by
   rcases lbf with ⟨a, ha⟩; rcases lbg with ⟨b, hb⟩
   exact ⟨a + b, fun x ↦ add_le_add (ha x) (hb x)⟩

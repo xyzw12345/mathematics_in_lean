@@ -3,6 +3,13 @@ import Mathlib.Data.Real.Basic
 
 namespace C03S01
 
+-- intro
+-- rcases
+
+example : ∀ (x y : ℝ), x = y → x ^ 2 = y ^ 2 := by
+  intro a b h
+  rw [h]
+
 #check ∀ x : ℝ, 0 ≤ x → |x| = x
 
 #check ∀ x y ε : ℝ, 0 < ε → ε ≤ 1 → |x| < ε → |y| < ε → |x * y| < ε
@@ -61,7 +68,7 @@ variable (f g : ℝ → ℝ) (a b : ℝ)
 
 example (hfa : FnUb f a) (hgb : FnUb g b) : FnUb (fun x ↦ f x + g x) (a + b) := by
   intro x
-  dsimp
+  dsimp only
   apply add_le_add
   apply hfa
   apply hgb
@@ -174,7 +181,7 @@ example (c : ℝ) : Injective fun x ↦ x + c := by
   exact (add_left_inj c).mp h'
 
 #check mul_left_cancel₀
-example {c : ℝ} (h : c ≠ 0) : Injective fun x ↦ c * x := by
+example {c : ℝ} (h : c ≠ 0) : Injective fun x ↦ c * x := by -- show_term
   unfold Injective; intro x y
   show c * x = c * y → x = y
   exact mul_left_cancel₀ h

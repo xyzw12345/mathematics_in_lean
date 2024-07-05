@@ -45,10 +45,7 @@ example : s ∩ (t ∪ u) ⊆ s ∩ t ∪ s ∩ u := by
   . right; exact ⟨xs, xu⟩
 
 example : s ∩ t ∪ s ∩ u ⊆ s ∩ (t ∪ u) := by
-  rintro x (⟨xs, xt⟩ | ⟨xs, xu⟩)
-  · exact ⟨xs, by left; exact xt⟩
-  · exact ⟨xs, Or.inr xu⟩
-
+  sorry
 example : (s \ t) \ u ⊆ s \ (t ∪ u) := by
   intro x xstu
   have xs : x ∈ s := xstu.1.1
@@ -68,9 +65,7 @@ example : (s \ t) \ u ⊆ s \ (t ∪ u) := by
   rintro (xt | xu) <;> contradiction
 
 example : s \ (t ∪ u) ⊆ (s \ t) \ u := by
-  rintro x ⟨xs, xntu⟩
-  exact ⟨⟨xs, fun h ↦ xntu (Or.inl h)⟩, fun h ↦ xntu (Or.inr h)⟩
-
+  sorry
 example : s ∩ t = t ∩ s := by
   ext x
   simp only [mem_inter_iff]
@@ -89,40 +84,18 @@ example : s ∩ t = t ∩ s := by
   . rintro x ⟨xt, xs⟩; exact ⟨xs, xt⟩
 
 example : s ∩ t = t ∩ s :=
-    Subset.antisymm (fun _ h ↦ ⟨h.2, h.1⟩) (fun _ h ↦ ⟨h.2, h.1⟩)
-
+    Subset.antisymm sorry sorry
 example : s ∩ (s ∪ t) = s := by
-  apply Subset.antisymm
-  · exact fun _ h ↦ h.1
-  · exact fun _ h ↦ ⟨h, Or.inl h⟩
+  sorry
 
 example : s ∪ s ∩ t = s := by
-  apply Subset.antisymm
-  · rintro x (hl | hr); exact hl; exact hr.1
-  · exact fun _ h ↦ Or.inl h
+  sorry
 
 example : s \ t ∪ t = s ∪ t := by
-  apply Subset.antisymm
-  · rintro x (hl | hr); left; exact hl.1; right; exact hr
-  · rintro x (hl | hr);
-    · rcases em (x ∈ t) with (h1 | h2); right; exact h1; left; exact ⟨hl, h2⟩
-    · right; exact hr
+  sorry
 
 example : s \ t ∪ t \ s = (s ∪ t) \ (s ∩ t) := by
-  apply Subset.antisymm
-  · rintro x (h1 | h2)
-    · exact ⟨Or.inl h1.1, fun h ↦ h1.2 h.2⟩
-    · exact ⟨Or.inr h2.1, fun h ↦ h2.2 h.1⟩
-  · rintro x ⟨(h1 | h2), h3⟩
-    · left; exact ⟨h1, fun h ↦ h3 ⟨h1, h⟩⟩
-    · right; exact ⟨h2, fun h ↦ h3 ⟨h, h2⟩⟩
-
-example (A B C D : Set α) : (A ∩ B) \ (C ∩ D) ⊆ (A \ C) ∪ (B \ D) := by
-  rintro x ⟨⟨xA, xB⟩, h⟩
-  rcases em (x ∈ C) with (xc | xnc)
-  · right; exact ⟨xB, fun xd ↦ h ⟨xc, xd⟩⟩
-  · left; exact ⟨xA, xnc⟩
-
+  sorry
 
 def evens : Set ℕ :=
   { n | Even n }
@@ -143,17 +116,7 @@ example (x : ℕ) : x ∈ (univ : Set ℕ) :=
   trivial
 
 example : { n | Nat.Prime n } ∩ { n | n > 2 } ⊆ { n | ¬Even n } := by
-  rintro x ⟨xp, xge2⟩; simp only [mem_setOf_eq] at xp;
-  simp only [gt_iff_lt, mem_setOf_eq] at xge2;
-  simp only [mem_setOf_eq]; rintro xeven; absurd xp
-  unfold Nat.Prime; unfold Even at xeven; rcases xeven with ⟨r, hr⟩;rw [← two_mul] at hr; rintro irrx
-  have : 1 < r := by linarith
-  have h1: ¬ IsUnit r := by simp only [Nat.isUnit_iff]; linarith [this]
-  have h2: ¬ IsUnit 2 := by norm_num
-  have : _ := irrx.2 2 r hr;
-  rcases this with (hl | hr); exact h2 hl; exact h1 hr
-
-
+  sorry
 
 #print Prime
 
@@ -189,10 +152,10 @@ section
 variable (ssubt : s ⊆ t)
 
 example (h₀ : ∀ x ∈ t, ¬Even x) (h₁ : ∀ x ∈ t, Prime x) : ∀ x ∈ s, ¬Even x ∧ Prime x := by
-  exact fun x xs ↦ ⟨h₀ x (ssubt xs), h₁ x (ssubt xs)⟩
+  sorry
 
 example (h : ∃ x ∈ s, ¬Even x ∧ Prime x) : ∃ x ∈ t, Prime x := by
-  rcases h with ⟨x, xs, _, hp⟩; exact ⟨x, ssubt xs, hp⟩
+  sorry
 
 end
 
@@ -231,18 +194,7 @@ example : (⋂ i, A i ∩ B i) = (⋂ i, A i) ∩ ⋂ i, B i := by
 
 
 example : (s ∪ ⋂ i, A i) = ⋂ i, A i ∪ s := by
-  apply Subset.antisymm
-  · intro x; simp only [mem_union, mem_iInter]; intro h;
-    rcases h with (hl | hr)
-    · exact fun _ ↦ Or.inr hl
-    · exact fun i ↦ Or.inl (hr i)
-  · intro x; simp only [mem_iInter, mem_union]; intro h;
-    rcases em (x ∈ s) with (xs | xns)
-    · left; exact xs
-    · right; intro i; have : _ := h i;
-      rcases this with (xai | xs)
-      · exact xai
-      · exfalso; exact xns xs
+  sorry
 
 def primes : Set ℕ :=
   { x | Nat.Prime x }
@@ -263,13 +215,7 @@ example : (⋂ p ∈ primes, { x | ¬p ∣ x }) ⊆ { x | x = 1 } := by
   apply Nat.exists_prime_and_dvd
 
 example : (⋃ p ∈ primes, { x | x ≤ p }) = univ := by
-  ext x; apply Iff.intro
-  · intro _; simp only [mem_univ]
-  · simp only [mem_univ, mem_iUnion, mem_setOf_eq, exists_prop, true_implies]
-    have h : _ := Nat.exists_infinite_primes x
-    rcases h with ⟨u, ⟨h1, h2⟩⟩
-    unfold primes; simp only [mem_setOf_eq]; exact ⟨u, ⟨h2, h1⟩⟩
-
+  sorry
 
 end
 

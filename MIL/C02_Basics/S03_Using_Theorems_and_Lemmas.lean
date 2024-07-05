@@ -20,8 +20,14 @@ end
 
 example (x y z : ℝ) (h₀ : x ≤ y) (h₁ : y ≤ z) : x ≤ z := by
   apply le_trans
-  · apply h₀
-  . apply h₁
+  -- pick_goal 3
+  -- exact y
+  -- exact h₀
+  -- exact h₁
+  pick_goal 2
+  · apply h₁
+  . apply h₀
+
 
 example (x y z : ℝ) (h₀ : x ≤ y) (h₁ : y ≤ z) : x ≤ z := by
   apply le_trans h₀
@@ -57,7 +63,7 @@ example (h : 2 * a ≤ 3 * b) (h' : 1 ≤ a) (h'' : d = 2) : d + a ≤ 5 * b := 
 end
 
 example (h : 1 ≤ a) (h' : b ≤ c) : 2 + a + exp b ≤ 3 * a + exp c := by
-  linarith [exp_le_exp.mpr h']
+  linarith [(exp_le_exp (x := b) (y := c)).mpr h']
 
 #check (exp_le_exp : exp a ≤ exp b ↔ a ≤ b)
 #check (exp_lt_exp : exp a < exp b ↔ a < b)
@@ -84,13 +90,16 @@ example (h₀ : a ≤ b) (h₁ : c < d) : a + exp c + e < b + exp d + e := by
   apply add_lt_add_of_lt_of_le
   · apply add_lt_add_of_le_of_lt h₀
     apply exp_lt_exp.mpr h₁
-  apply le_refl
+  · apply le_refl
 
 example (h₀ : d ≤ e) : c + exp (a + d) ≤ c + exp (a + e) := by
   exact add_le_add_left (exp_le_exp.mpr (add_le_add_left h₀ a)) c
 
 example : (0 : ℝ) < 1 := by norm_num
 
+-- a ≥ 0
+-- (a - b) + b ≥ 0
+-- rw [sub_add, sub_self, sub_zero]
 example (h : a ≤ b) : log (1 + exp a) ≤ log (1 + exp b) := by
   have h₀ : 0 < 1 + exp a := by
     exact add_pos one_pos (exp_pos a)
@@ -98,7 +107,6 @@ example (h : a ≤ b) : log (1 + exp a) ≤ log (1 + exp b) := by
   exact add_le_add_left (exp_le_exp.mpr h) 1
 
 example : 0 ≤ a ^ 2 := by
-  -- apply?
   exact sq_nonneg a
 
 example (h : a ≤ b) : c - exp b ≤ c - exp a := by
@@ -111,7 +119,7 @@ example : 2 * a * b ≤ a ^ 2 + b ^ 2 := by
   have h : 0 ≤ a ^ 2 - 2 * a * b + b ^ 2
   calc
     a ^ 2 - 2 * a * b + b ^ 2 = (a - b) ^ 2 := by ring
-    _ ≥ 0 := by apply pow_two_nonneg
+    _ ≥ 0 := by apply pow_two_nonneg (a - b)
 
   calc
     2 * a * b = 2 * a * b + 0 := by ring
