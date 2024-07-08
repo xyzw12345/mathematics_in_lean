@@ -5,6 +5,16 @@ import Mathlib.Data.Real.Basic
 namespace C06S01
 noncomputable section
 
+structure MyPoint where
+  x : ℝ
+  y : ℝ
+
+#check MyPoint.mk
+
+example (a b : MyPoint) (hx : a.x = b.x) (hy : a.y = b.y) : a = b := by
+  apply congr_arg₂ (f := MyPoint.mk)
+  repeat sorry
+
 @[ext]
 structure Point where
   x : ℝ
@@ -14,10 +24,27 @@ structure Point where
 #check Point.ext
 #check Point.ext_iff
 #check Point.mk
+#check congrArg
+#check congr_arg₂
 
 example (a b : Point) (hx : a.x = b.x) (hy : a.y = b.y) (hz : a.z = b.z) : a = b := by
-  ext
-  repeat' assumption
+  refine' congr (congr (congr (Eq.refl Point.mk) _) _) _
+  -- apply congr (f₁ := Point.mk _ _) (f₂ := Point.mk _ _)
+  -- apply congr (f₁ := Point.mk _) (f₂ := Point.mk _)
+  -- apply congr rfl
+  -- repeat' assumption
+  repeat sorry
+
+structure two_div_sum where
+  x : ℤ
+  y : ℤ
+  h : 2 ∣ x + y
+
+example (a b : two_div_sum) (h1 : a.x = b.x) (h2 : a.y = b.y) : a = b := by
+  have ha : a = ⟨a.x, a.y, a.h⟩ := rfl
+  have hb : b = ⟨b.x, b.y, b.h⟩ := rfl
+  rw [ha, hb]
+  simp_rw [h1, h2]
 
 def myPoint1 : Point where
   x := 2

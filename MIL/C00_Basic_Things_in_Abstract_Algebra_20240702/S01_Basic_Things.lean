@@ -1,4 +1,4 @@
-import Mathlib.Algebra.Groups.Basic
+import Mathlib
 
 section Basic_Calculations
 

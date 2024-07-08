@@ -388,3 +388,24 @@ instance Presented_Dihedral_Group : PresentedGroup (GeneratingRelforDihedral n) 
 
 
 example {G : Type*} [Group G] {g : G} (h : g ^ 2 = g) : g = 1 := sorry
+
+-- 2304B
+
+def centre_carrier (G : Type*) [Group G] : Set G := { g | ∀ h : G, g * h = h * g }
+
+def centre (G : Type*) [Group G]: Subgroup G where
+  carrier := centre_carrier G
+  mul_mem' := by sorry
+  one_mem' := by sorry
+  inv_mem' := by sorry
+
+-- example (G : Type*) [Group G] : CommGroup ((centre G): Subgroup G) where
+--   mul_comm := fun a b ↦ (
+--     have ha : a ∈ ((centre G) : Subgroup (centre G)).carrier := by
+
+--       sorry
+
+--     sorry
+--   )
+
+-- example {G : Type*} [Group G] : (centre : Subgroup G).Normal := by sorry
