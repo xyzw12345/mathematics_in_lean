@@ -11,7 +11,7 @@ import MIL.C03_Logic.S03_Negation
 import MIL.C03_Logic.S04_Conjunction_and_Iff
 import MIL.C03_Logic.S05_Disjunction
 import MIL.C03_Logic.S06_Sequences_and_Convergence
-import MIL.C00_Basic_Things_in_Abstract_Algebra_20240702.S01_Basic_Things
+import MIL.C00_20240702_Basic_Things_in_Abstract_Algebra.S01_Basic_Things
 import MIL.C04_Sets_and_Functions.S01_Sets
 import MIL.C04_Sets_and_Functions.S02_Functions
 import MIL.C04_Sets_and_Functions.S03_The_Schroeder_Bernstein_Theorem
