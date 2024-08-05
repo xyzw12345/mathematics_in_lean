@@ -56,8 +56,11 @@ def fac : ℕ → ℕ
   | 0 => 1
   | n + 1 => (n + 1) * fac n
 
-example (n : ℕ) : fac n = ∏ i in range n, (i + 1) := sorry
-
+example (n : ℕ) : fac n = ∏ i in range n, (i + 1) := by
+  induction' n with d hd
+  · simp only [range_zero, prod_empty]; rfl
+  · show (d + 1) * fac d = ∏ i ∈ range (d + 1), (i + 1)
+    rw [hd, Finset.prod_range_succ, mul_comm (d + 1) _]
 
 variable {X : Type*} [MetricSpace X]
 open Set Filter

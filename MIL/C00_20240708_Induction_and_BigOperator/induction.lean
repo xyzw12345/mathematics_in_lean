@@ -42,7 +42,18 @@ example (n : ℕ) : 0 < fac n := by
     exact Nat.succ_mul_pos n ih
 
 -- practice induction' with
-example (n : ℕ) : 2 ^ (n - 1) ≤ fac n := sorry
+example (n : ℕ) : 2 ^ (n - 1) ≤ fac n := by
+  induction' n with n ih
+  · show 2 ^ (0 - 1) ≤ 1
+    norm_num
+  · rw [add_tsub_cancel_right]
+    cases' n with m
+    · show 2 ^ 0 ≤ 1 * 1
+      norm_num
+    · rw [add_tsub_cancel_right] at ih
+      rw [pow_succ']
+      show 2 * 2 ^ m ≤ (m + 2) * fac (m + 1)
+      exact mul_le_mul (by omega) ih (by exact Nat.zero_le (2 ^ m)) (by exact Nat.zero_le (m + 2))
 
 -- to get a proof of mul_left_cancel
 example (a b c : ℕ) (ha : a ≠ 0) (h : a * b = a * c) : b = c := by
@@ -153,7 +164,23 @@ example {I : Ideal R} {J : ι → Ideal R} {s : Finset ι}
 
 
 -- practice induction' using with
-theorem two_le {m : ℕ} (h0 : m ≠ 0) (h1 : m ≠ 1) : 2 ≤ m := sorry
+theorem two_le {m : ℕ} (h0 : m ≠ 0) (h1 : m ≠ 1) : 2 ≤ m := by
+  cases' m with m1
+  · exact False.elim (h0 rfl)
+  · cases' m1 with m2
+    exact False.elim (((add_zero 1) ▸ h1) rfl)
+    · rw [add_assoc, ((by norm_num) : 1 + 1 = 2)]
+      exact Nat.le_add_left 2 m2
 
 #check Nat.strong_induction_on
-example {n : Nat} (h : 2 ≤ n) : ∃ p : Nat, p.Prime ∧ p ∣ n := sorry
+example {n : Nat} (h : 2 ≤ n) : ∃ p : Nat, p.Prime ∧ p ∣ n := by
+  induction' n using Nat.strong_induction_on with n hn
+  by_cases h1 : n.Prime
+  · exact ⟨n, ⟨h1, dvd_refl n⟩⟩
+  · have := Nat.exists_dvd_of_not_prime2 (n:=n) h h1
+    obtain ⟨m, ⟨h1, h2, h3⟩⟩ := this
+    obtain ⟨p, ⟨hp, h4⟩⟩ := hn m h3 h2
+    exact ⟨p, ⟨hp, dvd_trans h4 h1⟩⟩
+
+#check Set
+#check Quotient

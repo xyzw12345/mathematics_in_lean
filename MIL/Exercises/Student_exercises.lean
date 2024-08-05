@@ -1,5 +1,2156 @@
 import Mathlib
 
+/-If $G/Z(G)$ is a cyclic group, then $G$ is an abelian group,
+where $Z(G) = \{g ∈ G\ |\ \forall h ∈ G, gh = hg\}$ is the center of the group $G$.-/
+-- variable  {G : Type*} [Group G]
+-- #check QuotientGroup.mk
+-- #check Subgroup.mem_zpowers_iff
+-- #check Subgroup.mem_center_iff
+
+set_option diagnostics true
+set_option maxHeartbeats 1000000
+set_option maxRecDepth 10000
+
+/-26. Show that $2 \mathbb{Z} \cap 3 \mathbb{Z}$ is a ring. What is a more concise way to denote this ring?-/
+-- abbrev Z := AddSubgroup.zmultiples (2 : ℤ) ⊓ AddSubgroup.zmultiples (3 : ℤ)
+-- example : Z = AddSubgroup.zmultiples (6 : ℤ) := by
+--   ext
+--   simp [AddSubgroup.mem_zmultiples_iff]
+-- --we want to  prove $2Z \cap 3 Z=6Z$, which is equivalent to: $X \in 2 Z \cap 3 Z \Leftrightarrow X\in6Z$.
+--   constructor
+-- --(1) $x \in 2 Z \cap 3 Z \Rightarrow X \in 6Z$assume $X=2 b=3 c$$\because 3 | 3 c ,\therefore3 | 2b,3 | b$$\therefore x=\frac{b}{3} \cdot 6, x \in 6Z$
+--   intro a
+--   rcases a.1 with ⟨ b,hb⟩
+--   rcases a.2 with ⟨ c,hc⟩
+--   use b/3
+--   have d:b*2=c*3:=by
+--     rw[hb]
+--     exact id (Eq.symm hc)
+--   have :3∣c*3:=by
+--     exact Int.dvd_mul_left c 3
+--   have:3∣b*2:=by
+--     exact Dvd.intro_left c (id (Eq.symm d))
+--   have :3∣b:=by
+--     exact Int.dvd_of_dvd_mul_left_of_gcd_one this rfl
+--   refine Eq.symm (Int.eq_mul_div_of_mul_eq_mul_of_dvd_left ?h.hb this ?h.h)
+--   exact Ne.symm (NeZero.ne' 3)
+-- --(2). $x \in 6Z \Rightarrow x \in2 Z \cap 3 Z$:assume $X=6 m$$\therefore x=2*(3* m) , x=3 *(2 *m)$$\therefore x \in 2Z\cap3Z$
+--   rw[eq_comm]
+--   have l :b*6=b*(2*3):=by exact rfl
+--   have:b*6=b*2*3:=by
+--     rw[l]
+--     exact Eq.symm (Int.mul_assoc b 2 3)
+--   have:b*6=3*(b*2):=by
+--     rw[this]
+--     exact Eq.symm (Int.mul_comm 3 (b * 2))
+--   exact Eq.symm (Mathlib.Tactic.Ring.mul_congr rfl (id (Eq.symm hb)) (id (Eq.symm this)))
+--   intro t
+--   rcases t with ⟨ m,hm⟩
+--   constructor
+--   use 3*m
+--   have :3*m*2=m*6:=by ring
+--   rw[this,hm]
+--   use m*2
+--   have:m*2*3=m*6:=by ring
+--   rw[this,hm]
+
+
+/-19. Let $x \in G$ and let $a, b \in \mathbb{Z}^{+}$.
+
+(a) Prove that $x^{a+b}=x^{a} x^{b} \quad$ and $\quad\left(x^{a}\right)^{b}=x^{a b}$.
+
+(b) Prove that $\left(x^{a}\right)^{-1}=x^{-a}$.
+
+(c) Establish part (a) for arbitrary integers $a$ and $b$ (positive, negative or zero).-/
+-- example {G : Type*} [Group G] (x : G)(a b : {x : ℤ | x > 0}) :x ^ (a.1 + b.1)=x ^ a.1 * x ^ b.1   ∧ (x ^ a.1) ^ b.1=x ^(a.1 * b.1) :=by
+-- --(a). By the definition of expontiation in a group, we have $x^{a+b}=x^a x^b$, and $\left(x^a\right)^b=x^{a b}$
+--   constructor
+--   exact zpow_add x ↑a ↑b
+--   exact Eq.symm (zpow_mul x ↑a ↑b)
+-- example {G : Type*} [Group G] (x : G)(a : {x : ℤ | x > 0}): (x ^ a.1)⁻¹= x ^ (-(a : ℤ)):= by
+-- --(b). $\because a^{-n}*a^n=1$$\therefore a^{-n}=\left(a^n\right)^{-1}$
+--   exact Eq.symm (zpow_neg x ↑a)
+-- example {G : Type*} [Group G] (x : G)(a b : ℤ ):x ^ (a + b)=x ^ a * x ^ b∧ (x ^ a) ^ b=x ^(a * b):= by
+-- --(c). By the theorem of expontiation in a group, we have $x^{a+b}=x^a x^b$, and $\left(x^a\right)^b=x^{a b}$
+--   constructor
+--   exact zpow_add x a b
+--   exact Eq.symm (zpow_mul x a b)
+
+
+-- set_option maxRecDepth 1000000
+
+-- variable {G : Type*} [Group G] (H K : Subgroup G)
+
+-- -- First we define the homomorphism from $H × K to G$
+-- def func'  (hn : H.Normal)
+--  (kn : K.Normal) (h : H ⊓ K = ⊥ ) : H × K →* G where
+--   -- The function is defined as the product of the two elements
+--   toFun := fun x => x.1.1 * x.2.1
+--   -- The proof that the function is a homomorphism
+--   map_one' := by
+--   -- $(1,1)$ is the identity element of $H × K$,and $f(1,1) = 1 * 1 = 1$
+--     simp only [Prod.fst_one, OneMemClass.coe_one, Prod.snd_one, mul_one]
+--   -- $(h₁,k₁)$ and $(h₂,k₂)$ are two elements of $H × K$, and $f(h₁,k₁) * f(h₂,k₂) = h₁ * k₁ * h₂ * k₂$
+--   -- $f((h₁,k₁) * (h₂,k₂)) = f(h₁ * h₂, k₁ * k₂) = h₁ * h₂ * k₁ * k₂$
+--   map_mul' := by
+--     simp only [Prod.fst_mul, Submonoid.coe_mul, Subgroup.coe_toSubmonoid, Prod.snd_mul, Prod.forall,
+--       Subtype.forall]
+--     intros h₁ _ k₁ hk h₂ hh' k₂ _
+--     have commu: h₂ * k₁ = k₁ * h₂ := by
+--     -- becase $h₂⁻¹ * k₁ * h₂ * k₁⁻¹ ∈ H ⊓ K = ⊥$, we have $h₂ * k₁ = k₁ * h₂$
+--       have : k₁⁻¹ * h₂ * k₁ * h₂⁻¹ ∈ H ⊓ K := by
+--         -- This is becase $h₂⁻¹ * k₁ * h₂ ∈ K$ and $k₁⁻¹ ∈ K$, so $h₂⁻¹ * k₁ * h₂ * k₁⁻¹ ∈ K,& k₁ * h₂ * k₁⁻¹ ∈ H$ , $h₂⁻¹ ∈ H$
+--         constructor
+--         · have H1 : h₂⁻¹ ∈ H := by
+--             refine (Subgroup.inv_mem_iff H).mpr ?_
+--             exact hh'
+--           have H2 := hn.conj_mem h₂ hh' k₁⁻¹
+--           simp only [InvMemClass.coe_inv, inv_inv] at H2
+--           exact mul_mem H2 H1
+--         · have K1 : k₁⁻¹ ∈ K := by
+--             refine (Subgroup.inv_mem_iff K).mpr ?_
+--             exact hk
+--           have K2 := kn.conj_mem k₁ hk h₂
+--           have ans := mul_mem K1 K2
+--           have : k₁⁻¹ * (h₂ * k₁ * h₂⁻¹)  = k₁⁻¹ * h₂ * k₁ * h₂⁻¹ := by group
+--           rw [← this]
+--           exact ans
+--       have : k₁⁻¹ * h₂ * k₁ * h₂⁻¹ = 1 := by
+--         rw [h] at this
+--         exact this
+--       have : h₂ * k₁ = k₁ * h₂ := by
+--         calc
+--           _ = k₁ * (k₁⁻¹ * h₂ * k₁ * h₂⁻¹) * h₂ := by
+--             group
+--           _ = k₁ * 1 * h₂ := by
+--             rw [this]
+--           _ = k₁ * h₂ := by group
+--       exact this
+--     rw[← mul_assoc,← mul_assoc]
+--     have : h₁ * h₂ * k₁ * k₂ = h₁ * (h₂ * k₁) * k₂ := by
+--       group
+--     rw [this]
+--     have : h₁ * k₁ * h₂ * k₂ = h₁ * (k₁ * h₂) * k₂ := by
+--       group
+--     rw[this]
+--     rw[commu]
+
+-- -- we prove that the function is injective
+-- theorem func'_inj [hn: H.Normal] [hk: K.Normal] (h : H ⊓ K = ⊥ ): Function.Injective (func' H K hn hk h) := by
+--   -- Let $(x,y)$ and $(x',y')$ be two elements of $H × K$, and $f(x,y) = f(x',y')$
+--   intros x y hxy
+--   dsimp [func'] at hxy
+--   -- We need to prove that $x = x'$ and $y = y'$
+--   -- we have $x'⁻¹ * x = y'⁻¹ * y$
+--   have : (y.1.1)⁻¹ * x.1.1 * x.2.1  = y.2.1 := by
+--     rw [mul_assoc, hxy]
+--     group
+--   have h1 : (y.1.1)⁻¹ * x.1.1 = y.2.1 * x.2.1⁻¹ := by
+--     rw [ ← this]
+--     group
+--   have h2 : (y.1.1)⁻¹ * x.1.1 ∈ H := by
+--     have t1 : (y.1.1)⁻¹ ∈ H := by
+--       refine (Subgroup.inv_mem_iff H).mpr ?_
+--       exact y.1.2
+--     have t2 := x.1.2
+--     exact (Subgroup.mul_mem_cancel_right H t2).mpr t1
+--   have h3 : y.2.1 * x.2.1⁻¹ ∈ K := by
+--     have t1 : x.2.1⁻¹ ∈ K := by
+--       refine (Subgroup.inv_mem_iff K).mpr ?_
+--       exact x.2.2
+--     have t2 := y.2.2
+--     exact (Subgroup.mul_mem_cancel_left K t2).mpr t1
+--   -- so we have $x'⁻¹ * x ∈ H$ and $y'⁻¹ * y ∈ K$ that is to say $x'⁻¹ * x ∈ H ⊓ K = ⊥$ and $y'⁻¹ * y ∈ H ⊓ K = ⊥$
+--   have h4 : (y.1.1)⁻¹ * x.1.1 ∈ H ⊓ K := by
+--     constructor
+--     · exact h2
+--     · rw[h1]
+--       exact h3
+--   have h5 : (y.1.1)⁻¹ * x.1.1 = 1 := by
+--     rw [h] at h4
+--     exact h4
+--   have h6 :  y.2.1 * x.2.1⁻¹ = 1 := by
+--     rw [← h1]
+--     rw [h5]
+--   have h5' : x.1.1 = y.1.1 := by
+--     calc
+--       _ = (y.1.1) * (y.1.1⁻¹ * x.1.1) := by
+--         group
+--       _ = y.1.1 * 1 := by
+--         rw [h5]
+--       _ = y.1.1 := by group
+--   have h6' : x.2.1 = y.2.1 := by
+--     symm
+--     calc
+--       _ = (y.2.1 * x.2.1⁻¹) * x.2.1 := by
+--         group
+--       _ = 1 * x.2.1 := by
+--         rw [h6]
+--       _ = x.2.1 := by group
+--   ext
+--   · exact h5'
+--   · exact h6'
+
+-- -- we prove that the function is surjective
+-- theorem func'_sur [hn : H.Normal] [hk : K.Normal] (h : H ⊓ K = ⊥ ) (hHK : ∀ (x : G), ∃ h : H, ∃ k : K, x = h * k) : Function.Surjective (func' H K hn hk h) := by
+--   intro x
+--   -- this is becase $∀ (x : G), ∃ h : H, ∃ k : K, x = h * k$
+--   have : ∃ h : H, ∃ k : K, x = h * k := by
+--     exact hHK x
+--   rcases this with ⟨h, k, hx⟩
+--   use ⟨h, k⟩
+--   dsimp [func']
+--   symm
+--   exact hx
+
+
+-- if a homomorphism is injective and surjective, then it is an isomorphism
+-- noncomputable def hom_to_iso {G H : Type*} [Group G] [Group H] (α : G →* H) (surj : Function.Surjective α) (inj : Function.Injective α) : G ≃* H where
+--   toFun := by
+--     intro x
+--     use α x
+--   invFun := by
+--     intro y
+--     exact Classical.choose (surj y)
+--   left_inv := by
+--     intro x
+--     show Classical.choose (surj (α x)) = x
+--     have : α (Classical.choose (surj (α x))) = α x := by
+--       apply Classical.choose_spec (surj (α x))
+--     exact inj this
+--   right_inv := by
+--     intro y
+--     show α (Classical.choose (surj y)) = y
+--     exact Classical.choose_spec (surj y)
+--   map_mul' := by
+--     intro x y
+--     show α (x * y) = α x * α y
+--     simp only [map_mul]
+
+-- -- so we have the isomorphism from $H × K$ to $G$
+-- noncomputable def inviso {G : Type*} [Group G] (H K : Subgroup G) [hn: H.Normal] [hk: K.Normal] (h : H ⊓ K = ⊥ ) (hHK : ∀ (x : G), ∃ h : H, ∃ k : K, x = h * k)
+--   : (H × K) ≃* G := hom_to_iso (func' H K hn hk h) (func'_sur H K h hHK) (func'_inj H K h)
+
+
+-- open Equiv Equiv.Perm
+-- -- we define gama as a permutation in S6, which is c[0,1,3,4] * c[2,5]
+-- def gama : Equiv.Perm <|Fin 6 := c[0,1,3,4] * c[2,5]
+-- -- we define H as the subgroup generated by gama
+-- def subgroupS6 : Subgroup (Equiv.Perm <|Fin 6) := Subgroup.zpowers gama
+
+-- example (H : Subgroup (Equiv.Perm <|Fin 6))(h : H = subgroupS6): H.index = 180 := by
+--   -- We know that the card of $S_6$ is $720$.
+--   have cardS6 : Fintype.card (Equiv.Perm <|Fin 6) = 720 := by
+--     exact rfl
+--   letI : Fintype H := Fintype.ofFinite ↥H
+--   letI : Fintype subgroupS6 := Fintype.ofFinite ↥subgroupS6
+--   -- We prove that the card of $H$ is 4
+--   have cardgama : Fintype.card ( H ) = 4 := by
+--     -- Through computation, we know that the order of $gama$ is 4
+--     have : orderOf gama = 4 := by
+--         unfold orderOf
+--         apply (orderOf_eq_iff (by norm_num:0<4)).mpr
+--         constructor
+--         · decide
+--         · intro m hm hmm
+--           match m with
+--           | 0 => contradiction
+--           | 1 | 2 | 3  => decide
+--           | n + 4 => linarith
+--     -- Because the card of $H$ equals the $\text{orderOf } gama$, and the $\text{orderOf } gama$ is 4.
+--     have : Fintype.card subgroupS6 = 4 := by
+--       unfold subgroupS6
+--       let tmp := this ▸ @Fintype.card_zpowers (Perm (Fin 6)) _ _ gama
+--       convert tmp
+--     simp_rw [h]
+--     exact this
+--   -- We have the equivalence of the card of $H$ and the index of $H$ in $S_6$, which is $H.\text{index} \times \text{Fintype.card} \, \uparrow H = \text{Fintype.card} (S_6)$.
+--   have go : _ := Subgroup.index_mul_card H
+--   rw [cardgama] at go
+--   rw [cardS6] at go
+--   -- So the index of $H$ in $S_6$ is 180
+--   have : 720 = 180 * 4 := by
+--     norm_num
+--   rw [this] at go
+--   exact Nat.mul_right_cancel (m := 4) (by norm_num) go
+
+
+-- def subR : Subgroup (DihedralGroup 6) := Subgroup.zpowers (DihedralGroup.r 2)
+-- example (H : Subgroup (DihedralGroup 6))(h : H = subR): H.index = 4 := by
+--   -- We know that the card of $D_6$ is 12.
+--   have cardD6 : Fintype.card (DihedralGroup 6) = 12 := by
+--     exact rfl
+--   -- We prove that the card of $H$ is 3
+--   letI : Fintype H := Fintype.ofFinite ↥H
+--   letI : Fintype subR := Fintype.ofFinite ↥subR
+--   have cardR : Fintype.card ( H ) = 3 := by
+--     -- Because the card of $H$ equals the $\text{orderOf } r^2$, and the $\text{orderOf } r^2$ is 3.
+--     have : orderOf (DihedralGroup.r 2 : DihedralGroup 6) = 3 := by
+--       rw [DihedralGroup.orderOf_r]
+--       exact rfl
+--     have : Fintype.card subR = 3 := by
+--       unfold subR
+--       let tmp := this ▸ @Fintype.card_zpowers (DihedralGroup 6) _ _ (DihedralGroup.r 2 : DihedralGroup 6)
+--       convert tmp
+--     simp_rw [h]
+--     exact this
+--   -- we have the equivalence of the card of H and the index of H in D6, which is H.index * Fintype.card ↥H = Fintype.card (DihedralGroup 6)
+--   have go : _ := Subgroup.index_mul_card H
+--   rw [cardR] at go
+--   rw [cardD6] at go
+--   -- so the index of H in D6 is 4
+--   have : 12 = 4 * 3 := by
+--     norm_num
+--   rw [this] at go
+--   exact Nat.mul_right_cancel (m := 3) (by norm_num) go
+
+-- open Equiv Equiv.Perm
+
+-- theorem same_sgin_of_conjugate {α : Type*} [Fintype α] [DecidableEq α] (σ τ : Equiv.Perm α) :  sign σ = sign (τ⁻¹ * σ * τ) := by
+--   -- beacse sign is a homomorphism, we have $sign (τ⁻¹ * σ * τ) = sign (τ)⁻¹ * sign σ * sign τ$
+--   have : sign (τ⁻¹ * σ * τ) = sign (τ)⁻¹ * sign σ * sign τ := by
+--     rw [Equiv.Perm.sign_mul,Equiv.Perm.sign_mul]
+--   rw [this]
+--   -- beacse sign is a commutative group, we have $sign (τ)⁻¹ * sign σ * sign τ = sign σ * sign τ⁻¹ * sign τ$
+--   have : sign τ⁻¹ * sign σ  = sign σ * sign τ⁻¹  := by
+--     exact CommGroup.mul_comm (sign τ⁻¹) (sign σ)
+--   rw [this]
+--   -- beacse $sign τ⁻¹ = sign τ$, we have $sign σ * sign τ⁻¹ * sign τ = sign σ * sign τ * sign τ$
+--   have : sign τ⁻¹ = sign τ := by
+--     exact sign_inv τ
+--   rw [this,mul_assoc]
+--   -- beacse $sign τ * sign τ = 1$, we have $sign σ * sign τ * sign τ = sign σ * 1 = sign σ$
+--   have : sign τ * sign τ = 1 := by
+--     exact Int.units_mul_self (sign τ)
+--   rw [this]
+--   group
+
+-- we define alpha1 as a permutation in S4, which is c[1,2,3]
+-- def alpha1 : Equiv.Perm <|Fin 4 := c[1, 2, 3]
+-- def alpha1_2 : Equiv.Perm <|Fin 4 := c[1, 3, 2]
+-- def alpha1_3 : Equiv.Perm <|Fin 4 := 1
+-- def alpha1_4 : Equiv.Perm <|Fin 4 := c[1, 2, 3]
+-- def alpha1_5 : Equiv.Perm <|Fin 4 := c[1, 3, 2]
+-- def alpha1_0 : Equiv.Perm <|Fin 4 := c[1, 3, 2]
+
+-- -- by computation, we have $alpha1^2 = alpha1_2 = c[1, 3, 2]$
+-- example : alpha1_2 = alpha1^2 := by
+--   decide
+-- -- by computation, we have $alpha1^3 = alpha1_3 = 1$
+-- example : alpha1_3 = alpha1^3 := by
+--   decide
+-- -- by computation, we have $alpha1^4 = alpha1_4 = c[1, 2, 3]$
+-- example : alpha1_4 = alpha1^4 := by
+--   decide
+-- -- by computation, we have $alpha1^5 = alpha1_5 = c[1, 3, 2]$
+-- example : alpha1_5 = alpha1^5 := by
+--   decide
+-- -- by computation, we have $alpha1^{-1} = alpha{1_0} = c[1, 3, 2]$
+-- example : alpha1_0 = alpha1⁻¹ := by
+--   decide
+
+-- -- we define alpha2 as a permutation in S5, which is c[1,2,3,4]
+-- def alpha2 : Equiv.Perm <|Fin 5 := c[1, 2, 3, 4]
+-- def alpha2_2 : Equiv.Perm <|Fin 5 := c[1, 3] * c[2, 4]
+-- def alpha2_3 : Equiv.Perm <|Fin 5 := c[1, 4, 3, 2]
+-- def alpha2_4 : Equiv.Perm <|Fin 5 := 1
+-- def alpha2_5 : Equiv.Perm <|Fin 5 := c[1, 2, 3, 4]
+-- def alpha2_0 : Equiv.Perm <|Fin 5 := c[1, 4, 3, 2]
+
+-- -- by computation, we have $alpha2^2 = alpha2_2 = c[1, 3] * c[2, 4]$
+-- example : alpha2_2 = alpha2^2 := by
+--   decide
+-- -- by computation, we have $alpha2^3 = alpha2_3 = c[1, 4, 3, 2]$
+-- example : alpha2_3 = alpha2^3 := by
+--   decide
+-- -- by computation, we have $alpha2^4 = alpha2_4 = 1$
+-- example : alpha2_4 = alpha2^4 := by
+--   decide
+-- -- by computation, we have $alpha2^5 = alpha2_5 = c[1, 2, 3, 4]$
+-- example : alpha2_5 = alpha2^5 := by
+--   decide
+-- -- by computation, we have $alpha2^{-1} = alpha{2_0} = c[1, 4, 3, 2]$
+-- example : alpha2_0 = alpha2⁻¹ := by
+--   decide
+
+-- -- we define alpha3 as a permutation in S6, which is c[1,2,3,4,5,6]
+-- def alpha3 : Equiv.Perm <|Fin 7 := c[1, 2, 3, 4, 5, 6]
+-- def alpha3_2 : Equiv.Perm <|Fin 7 := c[1, 3, 5] * c[2, 4, 6]
+-- def alpha3_3 : Equiv.Perm <|Fin 7 := c[1, 4] * c[2, 5] * c[3, 6]
+-- def alpha3_4 : Equiv.Perm <|Fin 7 := c[1, 5, 3] * c[2, 6, 4]
+-- def alpha3_5 : Equiv.Perm <|Fin 7 := c[1, 6, 5, 4, 3, 2]
+-- def alpha3_0 : Equiv.Perm <|Fin 7 := c[1, 6, 5, 4, 3, 2]
+
+-- -- by computation, we have $alpha3^2 = alpha3_2 = c[1, 3, 5] * c[2, 4, 6]$
+-- example : alpha3_2 = alpha3^2 := by
+--   decide
+-- -- by computation, we have $alpha3^3 = alpha3_3 = c[1, 4] * c[2, 5] * c[3, 6]$
+-- example : alpha3_3 = alpha3^3 := by
+--   decide
+-- -- by computation, we have $alpha3^4 = alpha3_4 = c[1, 5, 3] * c[2, 6, 4]$
+-- example : alpha3_4 = alpha3^4 := by
+--   decide
+-- -- by computation, we have $alpha3^5 = alpha3_5 = c[1, 6, 5, 4, 3, 2]$
+-- example : alpha3_5 = alpha3^5 := by
+--   decide
+-- -- by computation, we have $alpha3^{-1} = alpha{3_0} = c[1, 6, 5, 4, 3, 2]$
+-- example : alpha3_0 = alpha3⁻¹ := by
+--   decide
+
+-- open Equiv Equiv.Perm
+
+-- variable {m n : ℕ} (h : m < n)
+-- -- define an injection from Fin m to Fin n where m < n
+-- def inclusion_m_n  : Fin m ↪ Fin n where
+--   toFun i := ⟨i.val, lt_trans i.is_lt h⟩
+--   inj' := by
+--     intros a b h
+--     simp only [Fin.mk.injEq] at h
+--     exact Fin.eq_of_val_eq h
+
+-- -- define a homomorphism from S_m to S_n where m < n, which is the embedding of $S_m$ to $S_n$
+-- noncomputable def hom'  : (Equiv.Perm <| Fin m) →* (Equiv.Perm <| Fin n) := Equiv.Perm.viaEmbeddingHom (inclusion_m_n h)
+
+-- -- the embedding of $S_m$ to $S_n$ is injective
+-- theorem viaEmbeddingHom_injective : Function.Injective (hom' (h : m < n)) := by
+--   exact Equiv.Perm.viaEmbeddingHom_injective (inclusion_m_n h)
+
+-- -- becase the embedding of $S_m$ to $S_n$ is injective, the kernel of the embedding is trivial
+-- example : (hom' (h : m < n)).ker = ⊥ := by
+--   refine (MonoidHom.ker_eq_bot_iff (hom' h)).mpr ?_
+--   exact _root_.viaEmbeddingHom_injective h
+
+-- -- it is trivial that Sm is isomorphic to the quotient group of the ⊥ in Sn
+-- def iso1 : (Equiv.Perm <| Fin m) ≃* ( (Equiv.Perm <| Fin m)⧸ (⊥ : Subgroup (Equiv.Perm <| Fin m)) ):= QuotientGroup.quotientBot.symm
+
+-- -- because the kernel of the embedding is trivial, the quotient group of the kernel is isomorphic to the range of the embedding
+-- noncomputable def iso2 (tt : (hom' (h : m < n)).ker = ⊥): ( (Equiv.Perm <| Fin m)⧸ (⊥ : Subgroup (Equiv.Perm <| Fin m)) ) ≃* ( (Equiv.Perm <| Fin m)⧸ (hom' (h : m < n)).ker) := by
+--   exact (QuotientGroup.quotientMulEquivOfEq tt).symm
+
+
+-- --becase Noether's isomorphism theorem, we have the isomorphism of the quotient group of the kernel and the range of the embedding
+-- noncomputable def iso3 : ( (Equiv.Perm <| Fin m)⧸ (hom' (h : m < n)).ker) ≃* ↥(hom' (h : m < n)).range := QuotientGroup.quotientKerEquivRange (hom' (h : m < n))
+
+
+-- noncomputable def iso4 (tt' : (hom' (h : m < n)).ker = ⊥): (Equiv.Perm <| Fin m) ≃* ( (Equiv.Perm <| Fin m)⧸ (hom' (h : m < n)).ker) := MulEquiv.trans iso1 (iso2 h tt')
+
+
+-- -- becase of the transitivity of the isomorphism, we have the isomorphism of Sm and the range of the embedding
+-- noncomputable def iso (tt' : (hom' (h : m < n)).ker = ⊥) : (Equiv.Perm <| Fin m) ≃* ↥(hom' (h : m < n)).range := MulEquiv.trans (iso4 h tt') (iso3 h)
+
+-- theorem relatively_prime_congruence (a m : ℤ ) (s t s' t' : ℤ) (h1 : s * a + t * m = 1) (h2 : s' * a + t' * m = 1) (h3 : Int.gcd m a = 1) :
+--   s ≡ s' [ZMOD m] := by
+--     -- becase $s * a + t * m = 1 = s' * a + t' * m$, we have $(s - s') * a = (t' - t) * m$
+--     have : s * a + t * m = s' * a + t' * m := by
+--       rw [h1, h2]
+--     have : s * a - s' * a = t' * m - t * m := by
+--       calc
+--         _ = s * a + t * m - t * m - s' * a := by group
+--         _ = s' * a + t' * m - t * m - s' * a := by rw [this]
+--         _ = t' * m - t * m := by group
+--     have : (s - s') * a = (t' - t) * m := by
+--       calc
+--         _ = s * a - s' * a := by group
+--         _ = t' * m - t * m := by rw [this]
+--         _ = (t' - t) * m := by group
+--     -- so we have $m | (s - s') * a$
+--     have dvd1 : m ∣ (s - s') * a := by
+--       rw [this]
+--       exact Int.dvd_mul_left (t' - t) m
+--     -- becase $m$ and $a$ are relatively prime, we have $m | (s - s')$
+--     have dvd2 : m ∣ (s - s') := by
+--       apply Int.dvd_of_dvd_mul_left_of_gcd_one
+--       · exact dvd1
+--       · exact h3
+--     -- so we have $s ≡ s' [ZMOD m]$
+--     have := by apply Int.modEq_iff_dvd.2 dvd2
+--     exact id (Int.ModEq.symm this)
+
+-- variable {R : Type*}[CommRing R]
+-- --assume $I=\left\{x \in R \mid \exists n \in N, x^n=0\right\}$
+-- def myNilradical : Set R := {x : R | ∃ n : ℕ, x ^ n = 0}
+-- instance Nilrad_ideal : Ideal R where
+--   carrier := myNilradical
+--   add_mem' {a b} ha hb := by
+-- --1. for $a, b \in I$, assume $a^n=0 \quad b^m=0$, we claim that $(a+b)^{(m+n)}=0$.
+--     obtain ⟨n, hn⟩ := ha
+--     obtain ⟨m, hm⟩ := hb
+--     use n + m
+-- --$(a+b)^{(m+n)}=\sum_{i=0}^{m+n} C_{m+n}^i a^i b^{m+n-i}$.
+--     rw [add_pow]
+--     apply Finset.sum_eq_zero
+--     intro x hx
+--     by_cases h : x ≥ n
+-- --  1.1: if $i \geqslant n,$then $\ a^i=0 \therefore C_{m+n}^i a^i b^{m+n-i}=0$
+--     · have : x = (n + (x - n)) := by exact Eq.symm (Nat.add_sub_of_le h)
+--       nth_rw 1 [this]
+--       rw [pow_add, hn]
+--       rw [zero_mul, zero_mul, zero_mul]
+-- -- 1.2 :else, then  $m+n-i \geqslant m \therefore b^{m+n-i}=0 , C_{m+n}^i a^i b^{m+n-i}=0$.
+--     · have : n + m - x = m + (n - x) := by
+--         rw [add_comm]
+--         apply Nat.add_sub_assoc
+--         exact Nat.le_of_not_ge h
+--       rw [this]
+--       rw [pow_add, hm]
+--       rw [zero_mul, mul_zero, zero_mul]
+--   zero_mem' := by
+-- --2. $\because 0^{1}=0 ，{\therefore} 0 \in I$
+--     use 1
+--     exact pow_one 0
+--   smul_mem' := by
+-- --3. if $c \in I, x \in R$, we need to prove $x *c \in I$.assume $c^n=0 \quad \therefore(x c)^n=x^n c^n=0$
+--     intro x c hx
+--     obtain ⟨n, hn⟩ := hx
+--     use n
+--     show ( x * c ) ^ n =0
+--     calc
+--       _=x ^ n * c ^ n:=by ring
+--       _=0:= by rw[hn,mul_zero]
+
+/-15. Prove that if $\tan 2 \theta=a\left(0<2 \theta<\frac{\pi}{2}\right)$ then $\tan \theta$ satisfies the equation $x^{2}-\frac{2}{a} x-1=0$.-/
+-- example {θ a: ℝ }(q: 0<2 * θ )(r: 2 * θ < Real.pi/2)(h:a=Real.tan (2*θ)): Real.tan θ  ^2+2*Real.tan θ /a-1=0  :=by
+--   have t:a=2 * Real.tan θ /(1 - (Real.tan θ)^ 2) :=by
+-- --\because \tan 2 \theta=\frac{2 \tan \theta}{1-(\tan \theta)^2} \thereforea=\tan 2 \theta=\frac{2 \tan \theta}{1-(\tan \theta)^2}
+--     rw[h]
+--     exact Real.tan_two_mul
+--   have  l1 : θ > 0 :=by
+-- --\because 0<2 \theta\therefore\theta=\frac{2 \theta}{2}>0
+--     calc
+--         _=(2 * θ )/2 :=by simp only [ne_eq, OfNat.ofNat_ne_zero, not_false_eq_true,
+--           mul_div_cancel_left₀]
+--         _>0:= by linarith
+
+--   have l2 :  θ  < Real.pi/2:=by
+-- --\because 2 \theta<\frac{\pi}{2} \therefore\theta=\frac{2 \theta}{2}<\frac{\frac{\pi}{2}}{2}<\frac{\pi}{2}
+--     calc
+--         θ  = (2 * θ )/2 :=by simp only [ne_eq, OfNat.ofNat_ne_zero, not_false_eq_true,
+--           mul_div_cancel_left₀]
+--         _ < _ := by linarith
+--   have l' : Real.tan θ > 0 := by
+-- --\therefore 0<\theta<\frac{\pi}{2}, \tan \theta>0
+--     exact Real.tan_pos_of_pos_of_lt_pi_div_two l1 l2
+--   calc
+-- --\therefore(\tan \theta)^2+\frac{2 \tan \theta}{a}-1=(\tan \theta)^2+\frac{2 \tan \theta}{\frac{2 \tan \theta}{1-\tan ^2 \theta}}-1=\tan ^2 \theta+\left(1-\tan ^2 \theta\right) \quad-1=0
+--     _=Real.tan θ  ^2+2*Real.tan θ /(2 * Real.tan θ /(1 - (Real.tan θ)^ 2))-1 := by rw[t]
+--     _=Real.tan θ  ^2+(1 - (Real.tan θ)^ 2) - 1:= by field_simp
+--     _=_:=by
+--       ring
+
+
+
+
+
+/-Let $G$ be a group and $\Delta = \{(g,g) \in G \times G \;|\; g \in G\}$ be the subset of $G\times G$. Show that $\Delta$ is a subgroup of $G \times G $.-/
+-- def group1 {G : Type*}[Group G] : Set (G × G) := {(s, t) | s = t}
+-- example {G : Type*}[Group G] : Subgroup (G×G) where
+--   carrier :=  group1
+--   mul_mem' := by
+-- --1. for $a, b \in \Delta$. assume $a=(x, x) ,b=(y, y)$ then $a * b=(x y, x y)$ $\in \Delta$
+--     intro a b ha hb
+--     show a.1 * b.1 = a.2 * b.2
+--     rw [ha, hb]
+--   one_mem' := by
+-- --2. $\because 1=1 \quad \therefore(1.1) \in \Delta$
+--     show 1=1
+--     rfl
+--   inv_mem' := by
+-- --3.for $X \in \Delta$. assume $X=(t, t)$$\therefore x^{-1}=\left(t^{-1}, t^{-1}\right) \in \Delta$
+--     intro x hx
+--     show x.1⁻¹=x.2⁻¹
+--     rw[hx]
+
+
+/-*1.51 Let $a$ and $b$ be integers, and let $s a+t b=1$ for $s, t$ in $\mathbb{Z}$. Prove that $a$ and $b$ are relatively prime.-/
+-- example {a b :ℤ }(h : ∃ s t : ℤ ,s * a + t * b =1) : gcd a b = 1 :=by
+--   obtain ⟨s,t,hst⟩ :=h
+-- --$\because\operatorname{gcd}(a , b) \mid s a+t b , \therefore\operatorname{gcd}(a , b) \mid 1 \ .$
+--   have h' : a.gcd b ∣ 1:= by
+--     apply (Int.gcd_dvd_iff).mpr
+--     use s ,t
+--     rw[eq_comm,Int.mul_comm]
+--     nth_rewrite 2 [mul_comm]
+--     rw[hst]
+--     exact rfl
+--   have q: gcd a b =a.gcd b:= by exact rfl
+--   have q': gcd a b ∣ 1 := by exact Int.natAbs_dvd_natAbs.mp h'
+-- --besides,$\because\operatorname{gcd}(a, b) \geqslant 0 \\ \therefore \operatorname{gcd}(a, b)=1$
+--   have r :(gcd a b ≥ 0):=by exact Int.le.intro_sub (a.gcd b) q
+--   exact Int.eq_one_of_dvd_one r q'
+
+-- open Equiv Equiv.Perm
+
+-- /-
+-- 13. Find the index of $12 \mathbb{Z}$ in $\mathbb{Z}$.
+-- -/
+-- --Firstly, define $f ： ℤ → ℤ_{12}, n ↦ n mod 12$.It can be checked that it's a morphism of group.
+-- instance f : ℤ →+ ZMod 12 where
+--   toFun n := n
+--   map_zero' :=rfl
+--   map_add' := by simp
+-- --Then, note that the kernal of $f$ is the group $12ℤ$ by definition.
+-- theorem f.Ker : f.ker = AddSubgroup.zmultiples (A := ℤ) 12 :=by
+--   ext x
+--   rw [Int.mem_zmultiples_iff, f.mem_ker]
+--   simp [f, ZMod.intCast_zmod_eq_zero_iff_dvd]
+-- --Thus, the index of $12ℤ$, that is, the cardinality of $ℤ/12ℤ$, is equal to the cardinality of $ℤ_{12}$ by the first isomorphism theorem, thus we get our result provided that $f$ is surjrctive.
+-- example : Nat.card (ℤ ⧸ AddSubgroup.zmultiples (A := ℤ) 12) = 12 :=by
+--   apply Nat.card_eq_of_equiv_fin
+--   change _ ≃ ZMod 12
+--   rw [← f.Ker]
+--   --Finally, we check the surjectivity. This directly comes from definition.
+--   apply (QuotientAddGroup.quotientKerEquivOfSurjective f _).toEquiv
+--   rw [← f.range_top_iff_surjective]
+--   ext x
+--   simp [f]
+--   use x.val
+--   simp
+
+-- we define the setoid on Fin n by the relation that two elements $(i,j)$ are related if there exists a $k$ such that $(σ ^ k) i = j$
+-- def pro2221a {n : ℕ} (σ : Equiv.Perm <| Fin n) : Setoid (Fin n) where
+--   r i j := (∃ k : ℤ, (σ ^ k) i = j)
+--   iseqv := {
+--     -- it is obivous that for any $i$, $(σ ^ 0) i = i$
+--     refl := by
+--       intro i
+--       use 0
+--       simp only [zpow_zero, Equiv.Perm.coe_one, id_eq]
+--     -- if there exists a $k$ such that $(σ ^ k) i = j$, then there exists a $-k$ such that $(σ ^ {-k}) j = i$
+--     symm := by
+--       intro x y hx
+--       obtain ⟨k, hk⟩ := hx
+--       use -k
+--       rw [← hk]
+--       simp only [zpow_neg, Equiv.Perm.inv_apply_self]
+--     -- if there exists a $k$ such that $(σ ^ k) i = j$ and there exists a $l$ such that $(σ ^ l) j = k$, then there exists a $k + l$ such that $(σ ^ {k + l}) i = k$
+--     trans := by
+--       intro x y z hxy hyz
+--       obtain ⟨k, hk⟩ := hxy
+--       obtain ⟨l, hl⟩ := hyz
+--       use k + l
+--       rw [← hl, ← hk]
+--       simp only [Equiv.Perm.mul_apply, zpow_add]
+--       exact Equiv.Perm.zpow_apply_comm σ k l
+--   }
+
+-- def equivi  {n : ℕ} (i : Fin n) (σ : Equiv.Perm <| Fin n) : Set (Fin n):= {j : Fin n | (pro2221a σ).r i j}
+
+-- example {n : ℕ} (i : Fin n) (j : Fin n) (σ : Equiv.Perm <| Fin n) : j ∈ equivi i σ ↔ j ∈ (MulAction.orbit (Subgroup.zpowers σ) i) := by
+--   constructor
+--   -- if $j$ is in the equivalence class of $i$, then there exists a $k$ such that $(σ ^ k) i = j$
+--   · intro h
+--     obtain ⟨k, hk⟩ := h
+--     refine MulAction.mem_orbit_iff.mpr ?mp.intro.a
+--     have : (σ ^ k) ∈ Subgroup.zpowers σ := Subgroup.zpow_mem_zpowers σ k
+--     -- so $j$ ∈ the orbit of $i$
+--     use ⟨ (σ ^ k), this⟩
+--     rw [← hk]
+--     exact rfl
+--   -- if $j$ is in the orbit of $i$, then there exists a $k$ such that $(σ ^ k) i = j$
+--   · intro h
+--     obtain ⟨⟨τ, hk⟩, hk'⟩ := h
+--     obtain ⟨k, hk''⟩ := hk
+--     -- so $j$ ∈ the equivalence class of $i$
+--     have h' : σ ^ k = τ := hk''
+--     have : τ i = j := hk'
+--     rw [← h'] at this
+--     use k
+
+-- example {R₁ R₂ : Type*} [Ring R₁] [Ring R₂] (f : R₁ →+* R₂)
+-- (ker : Set R₁) (h : ∀ a : R₁, a ∈ ker ↔ f a = 0) : Ideal R₁ where
+--   carrier := ker
+--   --For any $a, b \in Ker(f)$, since $f$ is a homomorphism, then $f(a+b)=f(a)+f(b)=0$. Hence $a+b \in Ker(f)$.
+--   add_mem' := by
+--     intro a b ha hb
+--     apply (h (a+b)).mpr
+--     simp
+--     rw[(h (a)).mp ha, (h (b)).mp hb]
+--     exact AddRightCancelMonoid.zero_add 0
+--   --Since $f$ is a homomorphism, $f(0)=0$. Hence $0 \in Ker(f)$
+--   zero_mem' := by
+--     simp
+--     apply (h (0)).mpr
+--     simp only [map_zero]
+--   --For any $a \in R_{1}, b \in Ker(f)$, $f(ab)=f(a)f(b)=0$ and $f(ba)=f(b)f(a)=0$.
+--   --Hence $Ker(f)$ is an ideal of $R_{1}$.
+--   smul_mem' :=by
+--     simp
+--     intro a b hb
+--     apply (h (a * b)).mpr
+--     simp
+--     rw[(h (b)).mp hb]
+--     exact mul_zero (f a)
+
+/-
+g. Consider the bijection between the groups $\mathbb{Z}_{3}$ and $\{\iota,(123),(132)\} \subset S_{3}$, given by $\varphi(1)=(123), \varphi(2)=(132), \varphi(0)=\iota$. Is this a group isomorphism?
+-/
+-- def A3 : Subgroup (Equiv.Perm (Fin 3)) where
+--   carrier := {.addLeft 1, .addLeft 2,.addLeft 0}
+--   --By definiiton, we can see that the subset {(123),(132),1} of $S₃$ is closed under multiplication.
+--   mul_mem' :=by
+--     intro x y
+--     intro hx hy
+--     obtain (rfl | rfl | rfl) := hx <;>
+--     obtain (rfl | rfl | rfl) := hy <;> simp
+--     · right
+--       left
+--       ext
+--       simp
+--       simp[← add_assoc]
+--     · right
+--       right
+--       ext
+--       simp[← add_assoc]
+--     · right
+--       right
+--       ext
+--       simp[← add_assoc]
+--     · left
+--       ext
+--       simp[← add_assoc]
+--   --Also note that this subgroup admits an identity with respect to multiplication.
+--   one_mem' :=by
+--     simp only [Fin.isValue, Equiv.addLeft_zero, Set.mem_insert_iff, Set.mem_singleton_iff, or_true]
+--   --And every element in it admits an inverse, thus we have proved that this subset actually forms a group.
+--   inv_mem' :=by
+--     simp only [Fin.isValue, Equiv.addLeft_zero, Set.mem_insert_iff, Set.mem_singleton_iff,inv_eq_one, forall_eq_or_imp, Equiv.inv_addLeft, forall_eq, inv_one, or_true, and_true]
+--     constructor
+--     right
+--     left
+--     rfl
+--     left
+--     rfl
+-- instance : Multiplicative (Fin 3) ≃* A3 where
+--   --Then consider the mapping $φ$, it's invertible by definition.
+--   toFun := fun x => ⟨Equiv.addLeft (Multiplicative.toAdd x), by
+--     fin_cases x <;> simp [A3]⟩
+--   invFun := fun x => Multiplicative.ofAdd (x.val 0)
+--   left_inv :=by
+--     intro x
+--     simp [Fin.isValue, Equiv.coe_addLeft, add_zero]
+--   right_inv :=by
+--     intro x
+--     simp only [Fin.isValue]
+--     ext y
+--     simp
+--     dsimp [A3] at x
+--     fin_cases x <;> simp
+--   --And $φ$ preserves the multiplication.Thus it's an isomorphism.
+--   map_mul' :=by
+--     intro x y
+--     simp only [Submonoid.mk_mul_mk, Subtype.mk.injEq]
+--     fin_cases x <;> fin_cases y <;> simp <;> ext <;> simp [← add_assoc]
+
+
+
+-- example {G H : Type*} [Group G] [Group H] (A : Set (G × H))
+--  (h : ∀ x : G × H, x ∈ A ↔ x.2 = (1 : H)) : Subgroup (G × H) where
+--   carrier := A
+--   -- Let the subgroup be K. For any $(x_{1}, e), (x_{2}, e) \in K$, $(x_{1}, e)(x_{2}, e)
+--   -- =(x_{1}x_{2}, e) \in K$.
+--   mul_mem' := by
+--     intro a b ha hb
+--     apply (h (a * b)).mpr
+--     simp
+--     rw[(h (a)).mp ha, (h (b)).mp hb]
+--     exact LeftCancelMonoid.one_mul 1
+--   -- Obviously, $(e, e) \in K$.
+--   one_mem' := by
+--     simp
+--     apply (h (1)).mpr
+--     rfl
+--   --For any $(x, e) \in K$, $(x^{-1}, e) \in  K$. Hence K is a subgroup of $G \times H$.
+--   inv_mem':= by
+--     simp
+--     intro a b ha
+--     apply (h (a⁻¹, b⁻¹)).mpr
+--     simp
+--     apply (h (a,b)).mp ha
+
+-- example {G H : Type*} [Group G] [Group H] (A : Set (G × G))
+--  (h : ∀ x : G × G, x ∈ A ↔ x.1 = x.2): Subgroup (G × G) where
+--   carrier := A
+--   --Let the subgroup be N. For any $(x_{1}, x_{1}), (x_{2}, x_{2}) \in N$,
+--   --$(x_{1}, x_{1})(x_{2}, x_{2})=(x_{1}x_{2}, x_{1}x_{2}) \in N$.
+--   mul_mem' := by
+--     intro a b ha hb
+--     apply (h (a * b)).mpr
+--     simp
+--     rw[(h (a)).mp ha, (h (b)).mp hb]
+--   --Obviously, $(e,e) \in N$.
+--   one_mem' := by
+--     show (1, 1) ∈ A
+--     apply (h (1, 1)).mpr
+--     rfl
+--   --For any $(x, x) \in N$, $(x^{-1}, x^{-1}) \in  N$. Hence N is a subgroup of $G \times G$.
+--   inv_mem':= by
+--     intro a ha
+--     simp
+--     apply (h (a⁻¹)).mpr
+--     simp
+--     apply (h (a)).mp ha
+
+-- def IsHom {G H : Type*} [Group G] [Group H] (f : G → H) : Prop := ∃ (g : G →* H), g.toFun = f
+
+-- def IsSubgroup' {G : Type*} [Group G] (H : Set G) : Prop := ∃ (H' : Subgroup G), H'.carrier = H
+
+-- def Image_set {G H : Type*} (f : G → H) : Set (G × H) := {x : G × H | f x.1 = x.2}
+
+-- def Image_subgroup {G : Type*} [Group G] (f : G →* G) : Subgroup (G × G) where
+--   carrier := Image_set f.toFun
+--   -- ($\Longleftarrow$)For any  $(g_{1}, f(g_{1})), (g_{2}, f(g_{2}))\in \Delta_{f}$,
+--   -- since $f$ is a homomorphism, then $f(g_{1}g_{2})= f(g_{1})f(g_{2})$, $(g_{1}, f(g_{1})) (g_{2}, f(g_{2}))
+--   mul_mem' {a b} ha hb := by
+--     show f (a.1 * b.1) = a.2 * b.2
+--     change f a.1 = a.2 at ha
+--     change f b.1 = b.2 at hb
+--     rw [map_mul, ha, hb]
+--   -- Since $f$ is a homomorphism, $f(1)=1$. Hence $(1, f(1))\in \Delta_{f}$.
+--   one_mem' := by
+--     show f 1 = 1
+--     exact f.map_one'
+--   -- For any $(g, f(g)) \in \Delta_{f}$, since $f$ is a homomorphism, $f(g^{-1})=(f(g))^{-1}$, then $(g, f(g))^{-1}
+--   -- =(g^{-1}, (f(g))^{-1})=(g^{-1}, f(g^{-1})) \in \Delta_{f}$. Hence $\Delta_{f}$ is a subgroup of $G \times G$.
+--   inv_mem' {a} ha := by
+--     show f (a.1)⁻¹ = (a.2)⁻¹
+--     rw [map_inv]
+--     congr 1
+
+-- def Fun_Hom {G : Type*} [Group G] (f : G → G) (h : IsSubgroup' (Image_set f)) : G →* G where
+--   toFun := f
+--   -- ($Longrightarrow$)For any $g_{1}, g_{2} \in G$,
+--   map_mul' x y := by
+--     -- since$\Delta_{f}$ is a subgroup of $G \times G$
+--     -- and $(g_{1}, f(g_{1})), (g_{2}, f(g_{2})) \in \Delta_{f}$,
+--     rcases h with ⟨H', hH⟩
+--     show f (x * y) = f x * f y
+--     show ⟨x * y, f x * f y⟩ ∈ Image_set f
+--     -- then $(g_{1}, f(g_{1})) (g_{2}, f(g_{2}))=(g_{1}g_{2}, f(g_{1})f(g_{2})) \in \Delta_{f}$,
+--     -- thus $f(g_{1}g_{2})= f(g_{1})f(g_{2})$, $f$ is a homomorphism.
+--     have hx : ⟨x, f x⟩ ∈ Image_set f := by
+--       show f x = f x
+--       rfl
+--     have hy : ⟨y, f y⟩ ∈ Image_set f := by
+--       show f y = f y
+--       rfl
+--     rw [← hH] at *
+--     exact H'.mul_mem' hx hy
+--   map_one' := by
+--     rcases h with ⟨H', hH⟩
+--     show 1 ∈ Image_set f
+--     rw [← hH]
+--     exact H'.one_mem'
+
+-- example {G : Type*}[Group G](f : G → G) : IsHom f ↔ IsSubgroup' (Image_set f) := by
+--   constructor
+--   · rintro ⟨g, rfl⟩
+--     exact ⟨Image_subgroup g, rfl⟩
+--   · rintro h
+--     exact ⟨Fun_Hom f h, rfl⟩
+
+/-
+24. Using $*$, define $|x|=\sqrt{x x^{*}}$. Show that $|x y|=|x||y|$ for any two quaternions $x$ and $y$
+-/
+-- variable {R : Type*} [One R] [Neg R] [CommRing R] {c₁ c₂ : R}
+-- open Quaternion Star
+-- example (a : ℍ[R,c₁,c₂]) (b : ℍ[R,c₁,c₂]): (a * (star a)) * (b * (star b)) = (a * b) * star (a * b)  :=by
+--   --Note that $a$ can be written in the form of $a₁ + a₂i + a₃j + a₄k$, and $a^{*}$ can be written as $a₁ - a₂i - a₃j - a₄k$.
+--   cases a
+--   --Similarly,$b$ can be written in the form of $b₁ + b₂i + b₃j + b₄k$, and $b^{*}$ can be written as $b₁ - b₂i - b₃j - b₄k$.
+--   cases b
+--   --Thus by direct calculation, we have that $a * a^{*} * b * b^{*} = (a * b) * (a * b)^{*}$.
+--   simp only [QuaternionAlgebra.star_mk, QuaternionAlgebra.mk_mul_mk, mul_neg,sub_neg_eq_add,neg_add_rev, neg_sub, QuaternionAlgebra.mk.injEq]
+--   ring_nf
+--   simp only [and_self]
+
+/-
+g. Consider the bijection between the groups $\mathbb{Z}_{3}$ and $\{\iota,(123),(132)\} \subset S_{3}$, given by $\varphi(1)=(123), \varphi(2)=(132), \varphi(0)=\iota$. Is this a group isomorphism?
+-/
+-- def A3 : Subgroup (Equiv.Perm (Fin 3)) where
+--   carrier := {.addLeft 1, .addLeft 2,.addLeft 0}
+--   --By definiiton, we can see that the subset {(123),(132),1} of $S₃$ is closed under multiplication.
+--   mul_mem' :=by
+--     intro x y
+--     intro hx hy
+--     obtain (rfl | rfl | rfl) := hx <;>
+--     obtain (rfl | rfl | rfl) := hy <;> simp
+--     · right
+--       left
+--       ext
+--       simp
+--       simp[← add_assoc]
+--     · right
+--       right
+--       ext
+--       simp[← add_assoc]
+--     · right
+--       right
+--       ext
+--       simp[← add_assoc]
+--     · left
+--       ext
+--       simp[← add_assoc]
+--   --Also note that this subgroup admits an identity with respect to multiplication.
+--   one_mem' :=by
+--     simp only [Fin.isValue, Equiv.addLeft_zero, Set.mem_insert_iff, Set.mem_singleton_iff, or_true]
+--   --And every element in it admits an inverse, thus we have proved that this subset actually forms a group.
+--   inv_mem' :=by
+--     simp only [Fin.isValue, Equiv.addLeft_zero, Set.mem_insert_iff, Set.mem_singleton_iff,inv_eq_one, forall_eq_or_imp, Equiv.inv_addLeft, forall_eq, inv_one, or_true, and_true]
+--     constructor
+--     right
+--     left
+--     rfl
+--     left
+--     rfl
+-- instance : Multiplicative (Fin 3) ≃* A3 where
+--   --Then consider the mapping $φ$, it's invertible by definition.
+--   toFun := fun x => ⟨Equiv.addLeft (Multiplicative.toAdd x), by
+--     fin_cases x <;> simp [A3]⟩
+--   invFun := fun x => Multiplicative.ofAdd (x.val 0)
+--   left_inv :=by
+--     intro x
+--     simp [Fin.isValue, Equiv.coe_addLeft, add_zero]
+--   right_inv :=by
+--     intro x
+--     simp only [Fin.isValue]
+--     ext y
+--     simp
+--     dsimp [A3] at x
+--     fin_cases x <;> simp
+--   --And $φ$ preserves the multiplication.Thus it's an isomorphism.
+--   map_mul' :=by
+--     intro x y
+--     simp only [Submonoid.mk_mul_mk, Subtype.mk.injEq]
+--     fin_cases x <;> fin_cases y <;> simp <;> ext <;> simp [← add_assoc]
+
+
+
+-- open scoped Classical
+-- open Fintype
+-- open Subgroup
+
+-- theorem intersect_coprime {G: Type*} [Group G](H1 H2: Subgroup G) [Fintype H1][Fintype H2]
+--     (h:(card H1).Coprime (card H2)):  H1 ⊓ H2  = ⊥ := by
+--     -- H1 ⊓ H2 is a subgroup of H1 and of H2
+--     --By Lagrange theorem, the cardinality of H1 ⊓ H2 divides the cardinality of H1 and H2
+--     have h1: card (H1 ⊓ H2: Subgroup G) ∣ card H1:=  card_dvd_of_le inf_le_left
+--     have h2: card (H1 ⊓ H2: Subgroup G) ∣ card H2:=  card_dvd_of_le inf_le_right
+--     -- It suffice to show that card H1 ⊓ H2 is 1.
+--     apply eq_bot_of_card_eq
+--     -- Use the face that any positive common divisor of coprimes is one.
+--     apply  Nat.eq_one_of_dvd_coprimes h h1 h2
+
+
+-- def IsHom {G H : Type*} [Group G] [Group H] (f : G → H) : Prop := ∃ (g : G →* H), g.toFun = f
+
+-- def IsSubgroup' {G : Type*} [Group G] (H : Set G) : Prop := ∃ (H' : Subgroup G), H'.carrier = H
+
+-- def Image_set {G H : Type*} (f : G → H) : Set (G × H) := {x : G × H | f x.1 = x.2}
+
+-- def Image_subgroup {G : Type*} [Group G] (f : G →* G) : Subgroup (G × G) where
+--   carrier := Image_set f.toFun
+--   -- ($\Longleftarrow$)For any  $(g_{1}, f(g_{1})), (g_{2}, f(g_{2}))\in \Delta_{f}$,
+--   -- since $f$ is a homomorphism, then $f(g_{1}g_{2})= f(g_{1})f(g_{2})$, $(g_{1}, f(g_{1})) (g_{2}, f(g_{2}))
+--   mul_mem' {a b} ha hb := by
+--     show f (a.1 * b.1) = a.2 * b.2
+--     change f a.1 = a.2 at ha
+--     change f b.1 = b.2 at hb
+--     rw [map_mul, ha, hb]
+--   -- Since $f$ is a homomorphism, $f(1)=1$. Hence $(1, f(1))\in \Delta_{f}$.
+--   one_mem' := by
+--     show f 1 = 1
+--     exact f.map_one'
+--   -- For any $(g, f(g)) \in \Delta_{f}$, since $f$ is a homomorphism, $f(g^{-1})=(f(g))^{-1}$, then $(g, f(g))^{-1}
+--   -- =(g^{-1}, (f(g))^{-1})=(g^{-1}, f(g^{-1})) \in \Delta_{f}$. Hence $\Delta_{f}$ is a subgroup of $G \times G$.
+--   inv_mem' {a} ha := by
+--     show f (a.1)⁻¹ = (a.2)⁻¹
+--     rw [map_inv]
+--     congr 1
+-- -- ($Longrightarrow$)For any $g_{1}, g_{2} \in G$, since$\Delta_{f}$ is a subgroup of $G \times G$
+-- -- and $(g_{1}, f(g_{1})), (g_{2}, f(g_{2})) \in \Delta_{f}$,
+-- -- then $(g_{1}, f(g_{1})) (g_{2}, f(g_{2}))=(g_{1}g_{2}, f(g_{1})f(g_{2})) \in \Delta_{f}$,
+-- -- thus $f(g_{1}g_{2})= f(g_{1})f(g_{2})$, $f$ is a homomorphism.
+-- def Fun_Hom {G : Type*} [Group G] (f : G → G) (h : IsSubgroup' (Image_set f)) : G →* G where
+--   toFun := f
+--   map_mul' x y := by
+--     rcases h with ⟨H', hH⟩
+--     show f (x * y) = f x * f y
+--     show ⟨x * y, f x * f y⟩ ∈ Image_set f
+--     have hx : ⟨x, f x⟩ ∈ Image_set f := by
+--       show f x = f x
+--       rfl
+--     have hy : ⟨y, f y⟩ ∈ Image_set f := by
+--       show f y = f y
+--       rfl
+--     rw [← hH] at *
+--     exact H'.mul_mem' hx hy
+--   map_one' := by
+--     rcases h with ⟨H', hH⟩
+--     show 1 ∈ Image_set f
+--     rw [← hH]
+--     exact H'.one_mem'
+
+-- example {G : Type*}[Group G](f : G → G) : IsHom f ↔ IsSubgroup' (Image_set f) := by
+--   constructor
+--   · rintro ⟨g, rfl⟩
+--     exact ⟨Image_subgroup g, rfl⟩
+--   · rintro h
+--     exact ⟨Fun_Hom f h, rfl⟩
+
+-- lemma unique_smallest_element{R : Type*} [OrderedRing R] {S : Set R} (h : ∃ a ∈ S, ∀ b ∈ S, a ≤ b) : ∃! (a : S), ∀ (b : S), a ≤ b := by
+--   obtain ⟨a, ha, h'⟩ := h
+--   use ⟨ a , ha ⟩
+--   simp only [Subtype.forall, Subtype.mk_le_mk]
+--   constructor
+--   -- existence : becasue of h, so we can use $a$
+--   · exact h'
+--   -- uniqueness : if $b$ satisfies the condition, then we have $b ≤ a$ and $a ≤ b$, so $a = b$
+--   · intro b hb hbb
+--     have neq1 : a ≤ b := h' b hb
+--     have neq2 : b ≤ a := hbb a ha
+--     have eq : a = b := le_antisymm neq1 neq2
+--     exact Subtype.mk_eq_mk.mpr (id (Eq.symm eq))
+
+-- def group1 {G : Type*}[Group G] : Set (G × G) := {(s, t) | s = t}
+-- example {G : Type*}[Group G] : Subgroup (G×G) where
+--   carrier :=  group1
+--   mul_mem' := by
+--     --to prove:if a,b are elements in group1,then a*b is a element in group1
+--     intro a b ha hb
+--     show a.1 * b.1 = a.2 * b.2
+--     --turn the goal into a.1 * b.1 = a.2 * b.2
+--     rw [ha, hb]
+--   one_mem' := by
+--     --to prove (1,1) is a element in group1
+--     show 1=1
+--     rfl
+--   inv_mem' := by
+--     --to prove if x in group,then x\-1 is in too
+--     intro x hx
+--     show x.1⁻¹=x.2⁻¹
+--     -- turn the goal into x.1⁻¹=x.2⁻¹
+--     rw[hx]
+
+
+-- example : (∀ (x : (ZMod 4) × (ZMod 6)), addOrderOf x ≤ 12) ∧ ∃ (y : (ZMod 4) × (ZMod 6)) , addOrderOf y = 12 := by
+--   constructor
+--   -- for any $x$ in $\mathbb{Z}_4 \times \mathbb{Z}_6$, the order of $x$ is less than or equal to 12
+--   · intro x
+--     have od : 12 * x = 0 := by
+--       refine Eq.symm (Prod.ext ?_ ?_)
+--       · symm
+--         -- becase $4x.1 = 0$, we have $12x.1 = 0$
+--         have : 4 * (x.1) = 0 := by
+--           exact mul_eq_zero_of_left rfl x.1
+--         exact this
+--         -- becase $6x.2 = 0$, we have $12x.2 = 0$
+--       · symm
+--         have : 6 * (x.2) = 0 := by
+--           exact mul_eq_zero_of_left rfl x.2
+--         exact this
+--     -- becase $12x = 0$, we have $\text{addOrderOf } x \mid 12$
+--     have : addOrderOf x ∣ 12 := by
+--       refine addOrderOf_dvd_iff_nsmul_eq_zero.mpr ?_
+--       simp only [nsmul_eq_mul, Nat.cast_ofNat]
+--       exact od
+--     -- becase $\text{addOrderOf } x \mid 12$,and $ 0 < 12$, we have $\text{addOrderOf } x \leq 12$
+--     obtain ⟨k,hk⟩ := this
+--     have : k ≠ 0 := by
+--       intro h
+--       rw [h] at hk
+--       contradiction
+--     rw[hk]
+--     refine Nat.le_mul_of_pos_right (addOrderOf x) ?left.intro.h
+--     exact Nat.zero_lt_of_ne_zero this
+--   · -- we have $(1,1)$ in $\mathbb{Z}_4 \times \mathbb{Z}_6$ and the order of $(1,1)$ is 12
+--     use (1,1)
+--     unfold addOrderOf
+--     apply (addOrderOf_eq_iff (by norm_num:0<12)).mpr
+--     constructor
+--     -- by computation, we have $12(1,1) = 0$
+--     · decide
+--     · intro m hm hmm
+--       match m with
+--       | 0 => contradiction
+--       | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11  => decide
+--       | n + 12 => linarith
+
+/-
+For a $2 \times 2$ matrix
+$$
+A =
+\begin{pmatrix}
+  a & b \\
+  c & d
+\end{pmatrix}
+$$
+prove that $A$ is invertible iff $ad-bc \ne 0$, and find the inverse when $ad - bc \ne 0$.
+-/
+-- example (a b c d : ℝ) : a * d - b * c ≠ 0 ↔ (IsUnit !![a, b; c, d]) :=by
+--   constructor
+--   intro h
+--   unfold IsUnit
+--   /-We show that
+-- $$
+-- \begin{pmatrix}
+--   d * (a * d - b * c)⁻¹ & -b * (a * d - b * c)⁻¹ \\
+--   -c * (a * d - b * c)⁻¹ & a * (a * d - b * c)⁻¹
+-- \end{pmatrix}
+-- $$
+--   is the inverse of it.It can be checked by direct calculation.  -/
+--   use {
+--     val := !![a, b; c, d],
+--     inv := !![d * (a * d - b * c)⁻¹, -b * (a * d - b * c)⁻¹; -c * (a * d - b * c)⁻¹, a * (a * d - b * c)⁻¹]
+--     val_inv :=by
+--       simp only [neg_mul, Matrix.cons_mul, Nat.succ_eq_add_one, Nat.reduceAdd, Matrix.vecMul_cons,Matrix.head_cons, Matrix.smul_cons, smul_eq_mul, mul_neg, Matrix.smul_empty,Matrix.tail_cons, Matrix.empty_vecMul, add_zero, Matrix.add_cons, Matrix.empty_add_empty,Matrix.empty_mul, Equiv.symm_apply_apply]
+--       ring_nf
+--       rw[← sub_mul,mul_inv_cancel]
+--       exact Eq.symm Matrix.one_fin_two
+--       exact h
+--     inv_val :=by
+--       simp
+--       ring_nf
+--       rw[← sub_mul,mul_inv_cancel]
+--       show Matrix.of ![![1, d * b * (d * a - b * c)⁻¹ - (d * b * (d * a - b * c)⁻¹)],
+--         ![0, d * a * (d * a - b * c)⁻¹ - (b * c * (d * a - b * c)⁻¹)]] = 1
+--       simp
+--       rw[← sub_mul,mul_inv_cancel]
+--       exact Eq.symm Matrix.one_fin_two
+--       rw [ne_eq] at h
+--       rw [← mul_comm d a] at h
+--       exact h
+--       rw [mul_comm]
+--       exact h}
+--   --For the other direction, we consider the inverse $A'$ of the matrix $A$. Note that $A * A' = 1$, that is, $det(A * A') = det(1)$. Also note that $det(A) * det(A') = det(A * A')$.
+--   intro h
+--   rcases h with ⟨⟨A, A', h1, h2⟩, h⟩
+--   dsimp at h
+--   have := Matrix.two_mul_expl A A'
+--   rw [h1] at this
+--   have h' : ((1 : Matrix (Fin 2) (Fin 2) ℝ) 0 0 * (1 : Matrix (Fin 2) (Fin 2) ℝ) 1 1) - ((1 : Matrix (Fin 2) (Fin 2) ℝ) 0 1 * (1 : Matrix (Fin 2) (Fin 2) ℝ) 1 0) = ((A 0 0) * (A 1 1) - (A 0 1) * (A 1 0)) * ((A' 0 0 * A' 1 1) - (A' 0 1 * A' 1 0)) := by
+--     rw [this.1, this.2.1, this.2.2.1, this.2.2.2]
+--     ring
+--   have : a = A 0 0 ∧ b = A 0 1 ∧ c = A 1 0 ∧ d = A 1 1 := by
+--     rw [h]
+--     simp? says simp only [Fin.isValue, Matrix.of_apply, Matrix.cons_val', Matrix.cons_val_zero, Matrix.empty_val', Matrix.cons_val_fin_one, Matrix.cons_val_one, Matrix.head_cons, Matrix.head_fin_const, and_self]
+--   simp? at h' says simp only [Fin.isValue, Matrix.one_apply_eq, mul_one, ne_eq, zero_ne_one, not_false_eq_true, Matrix.one_apply_ne, one_ne_zero, mul_zero, sub_zero] at h'
+--   --After simplification, we have $(a*d-b*c)*(a'*d'-b'*c')=1$,thus $(a*d-b*c)$ must be nonzero.
+--   rw [← this.1, ← this.2.1, ← this.2.2.1, ← this.2.2.2] at h'
+--   exact fun h'' ↦ (by rw [h'', zero_mul] at h'; exact one_ne_zero h')
+
+-- open Equiv Equiv.Perm
+
+-- example {α : Type*} [Fintype α] [DecidableEq α] (f : Equiv.Perm α ) (g : Equiv.Perm α )
+-- (hg : Equiv.Perm.IsSwap g): Equiv.Perm.IsSwap (f * g * f⁻¹) := by
+--   -- We have $g$ is a swap, so $g$ has two fixed points.
+--   have : g.support.card = 2 := by
+--     exact card_support_eq_two.mpr hg
+--   -- so $f * g * f⁻¹$ has two fixed points.
+--   have : (f * g * f⁻¹).support.card = 2 := by
+--     rw[Equiv.Perm.card_support_conj]
+--     exact this
+--   -- Therefore, $f * g * f⁻¹$ is a swap.
+--   refine card_support_eq_two.mp ?_
+--   · exact this
+
+-- we define alpha as a permutation in S6, which is c[1,2] * c[4,3] * c[1,3,5,4,2] * c[1,5] * c[1,3] * c[2,3]
+-- def alpha : Equiv.Perm <|Fin 6 := c[1,2] * c[4,3] * c[1,3,5,4,2] * c[1,5] * c[1,3] * c[2,3]
+
+-- -- the order of alpha is 6
+-- example : orderOf alpha = 6 := by
+--   unfold orderOf
+--   apply (orderOf_eq_iff (by norm_num:0<6)).mpr
+--   constructor
+--   -- by computation, we have $alpha ^ 6 = 1$
+--   · decide
+--   -- for any $m$ in $[0,6)$, we have $alpha ^ m \neq 1$
+--   · intro m hm hmm
+--     change alpha ^ ((⟨m, hmm, hm⟩ : Set.Ioo 0 6) : Nat) ≠ 1
+--     generalize (⟨m, hmm, hm⟩ : Set.Ioo 0 6) = m'
+--     fin_cases m' <;> decide
+
+-- -- by computation, we have $alpha⁻¹ =  alpha^5 =c[1,5,4] * c[2,3]$
+-- example : alpha^5 = alpha⁻¹ := by
+--   decide
+
+-- open Equiv Perm
+
+-- -- by computation, we have the partition of alpha is odd
+-- example : sign alpha = -1 := by
+--   decide
+
+-- namespace Equiv.Perm
+
+-- open Equiv List Multiset
+
+-- variable {α : Type*} [Fintype α][DecidableEq α]
+
+
+-- #check cycleType
+-- #check cycle_induction_on
+-- --Two fact will be used :
+-- #check IsCycle.cycleType
+-- #check Disjoint.orderOf
+
+
+-- example (σ : Perm α) : σ.cycleType.lcm = orderOf σ := by
+--   induction σ using cycle_induction_on with
+--   --We use induction on cycle to prove this example.
+--   | base_one => simp only [cycleType_one, lcm_zero, orderOf_one]
+--   --Step 1 : prove $\operatorname {lcm} 1-\text{length} = |1|$ for identity perm. Trivial.
+--   | base_cycles σ hσ => simp only [hσ.cycleType, coe_singleton, lcm_singleton, normalize_apply,
+--     normUnit_eq_one, Units.val_one, mul_one, hσ.orderOf]
+--   --Step 2 : prove $\operatorname{lcm} (\text{length of } \sigma) = |\sigma|$ for a cycle $\sigma.$That is a Standard fact.
+--   | induction_disjoint σ τ hd _ hσ hτ => simp only [hd.cycleType, lcm_add, hσ, hτ,
+--     lcm_eq_nat_lcm, hd.orderOf]
+--   --Step 3 : prove $\operatorname{lcm} (\text{lengths of }(\sigma \tau)) = |\sigma \tau|$ That is also a Standard fact.
+--   --The induction method is based on that each perm has cycletype i.e. Each perm could be written as finite number of some disjoint cycles.
+
+
+/-
+13. Find the index of $12 \mathbb{Z}$ in $\mathbb{Z}$.
+-/
+-- --Firstly, define $f ： ℤ → ℤ_{12}, n ↦ n mod 12$.It can be checked that it's a morphism of group.
+-- instance f : ℤ →+ ZMod 12 where
+--   toFun n := n
+--   map_zero' :=rfl
+--   map_add' := by simp
+-- --Then, note that the kernal of $f$ is the group $12ℤ$ by definition.
+-- theorem f.Ker : f.ker = AddSubgroup.zmultiples (A := ℤ) 12 :=by
+--   ext x
+--   rw [Int.mem_zmultiples_iff, f.mem_ker]
+--   simp [f, ZMod.intCast_zmod_eq_zero_iff_dvd]
+-- --Thus, the index of $12ℤ$, that is, the cardinality of $ℤ/12ℤ$, is equal to the cardinality of $ℤ_{12}$ by the first isomorphism theorem, thus we get our result.
+-- example : Nat.card (ℤ ⧸ AddSubgroup.zmultiples (A := ℤ) 12) = 12 :=by
+--   apply Nat.card_eq_of_equiv_fin
+--   change _ ≃ ZMod 12
+--   rw [← f.Ker]
+--   apply (QuotientAddGroup.quotientKerEquivOfSurjective f _).toEquiv
+--   rw [← f.range_top_iff_surjective]
+--   ext x
+--   simp [f]
+--   use x.val
+--   simp
+
+/-
+\# $\mathbf{5}$ Let $A$ be the set $\mathbb{R} \times \mathbb{R}$ with the usual addition and the following "multiplication":
+$$
+(a, b) \odot(c, d)=(a c, b c)
+$$
+Granting that $A$ is a ring, let $f: A \rightarrow \mu_{2}(\mathbb{R})$ be given by
+$$
+f(x, y)=\left(\begin{array}{ll}
+x & 0 \\
+y & 0
+\end{array}\right)
+$$
+Prove that $f$ is a Semiring homomorphism.
+-/
+-- def R := ℝ × ℝ
+--   deriving AddCommGroup
+-- --Firstly, we show that the composition law defined on ℝ × ℝ is well defined.
+-- instance : NonUnitalRing R where
+--   mul := fun (a, b) (c, _) => (a * c, b * c)
+--   --By definition, the composition laws obey the left and right distributive laws.
+--   left_distrib :=by
+--     intro a b c
+--     change (_, _) = (_, _) + (_, _)
+--     ext <;> simp [mul_add]
+--   right_distrib :=by
+--     intro a b c
+--     change (_, _) = (_, _) + (_, _)
+--     ext <;> simp [add_mul]
+--   --By definition, the multiplication is compatible with the zero element of the original addition law difined on it.
+--   zero_mul :=by
+--     intro a
+--     change (_,_) = (_,_)
+--     simp only [zero_mul]
+--   mul_zero :=by
+--     intro a
+--     change (_,_) = (_,_)
+--     simp only [mul_zero]
+--   --By definition, the multiplication law we defined is associative.
+--   mul_assoc :=by
+--     intro a b c
+--     change (_, _) = (_, _)
+--     ext <;> ac_rfl
+-- --Then, we show that $f$ is a morphism of ring without unity.
+-- example : R →ₙ+* Matrix (Fin 2) (Fin 2) ℝ where
+--   toFun := fun (x, y) ↦ !![x, 0; y, 0]
+--   --Firstly, note that the multiplication in $ℝ × ℝ$ is compatible with the multiplication of matrices.
+--   map_mul' :=by
+--     intro x y
+--     cases x; cases y
+--     simp
+--   --Then note that the mapping maps the zero element to the zero element.
+--   map_zero' :=by
+--     simp only
+--     exact Eq.symm (Matrix.eta_fin_two 0)
+--   --It is clear that the mapping the $f$ is a morphism of additive group.
+--   map_add' := by
+--     intro x y
+--     simp only
+--     cases y; cases x
+--     simp
+
+-- def abelian_of_cyclic_quotient (h : IsCyclic (G ⧸ Subgroup.center G)) : CommGroup G := by
+--   -- It suffices to prove that for any $a, b \in G$, $a \cdot b = b \cdot a$.
+--   constructor
+--   intro a b
+--   -- For any $a \in G$, in the quotient group $G / Z(G)$, $a$ must belong to a coset denoted as $qZ(G)$.
+--   let qa : G ⧸ Subgroup.center G := QuotientGroup.mk a
+--   -- Since the quotient group $G / Z(G)$ is cyclic, let $X$ be the generator. Then there must exist a positive integer $k$ such that $qZ(G) = X^k$.
+--   obtain ⟨X, hcH⟩ := h.exists_generator
+--   have ha :=by apply hcH qa
+--   obtain ⟨k,hk⟩ := ha
+--   simp only at hk
+--   -- Therefore, there must exist an element $x_0$ in $X$ such that $(x_0^k)^{-1} \cdot a \in Z(G)$. Let's denote $(x_0^k)^{-1} \cdot a = c_1$.
+--   set x₀ : G := X.out'
+--   have : QuotientGroup.mk x₀ = X := QuotientGroup.out_eq' X
+--   have : QuotientGroup.mk (x₀ ^ k) = qa := by
+--     rw [← hk, ← this]
+--     simp only [QuotientGroup.mk_zpow]
+--   have h': (x₀ ^ k)⁻¹ * a ∈ Subgroup.center G := by
+--     apply QuotientGroup.eq'.mp
+--     exact this
+--   set c₁ : G := (x₀ ^ k)⁻¹ * a
+
+--   -- Similarly for $b$, let's denote $(x_0^m)^{-1} \cdot b = c_2$.
+--   let qb : G ⧸ Subgroup.center G := QuotientGroup.mk b
+--   have hb :=by apply hcH qb
+--   obtain ⟨m,hm⟩ := hb
+--   simp only at hm
+--   have : QuotientGroup.mk x₀ = X := by exact QuotientGroup.out_eq' X
+--   have : QuotientGroup.mk (x₀ ^ m) = qb := by
+--     rw [← hm, ← this]
+--     simp only [QuotientGroup.mk_zpow]
+--   have h'': (x₀ ^ m)⁻¹ * b ∈ Subgroup.center G := by
+--     apply QuotientGroup.eq'.mp
+--     exact this
+--   set c₂ : G := (x₀ ^ m)⁻¹ * b
+
+--   -- Substitute $a = (x_0^k) \cdot c_1$ and $b = (x_0^m) \cdot c_2$ into the calculation.
+--   calc
+--     a * b = (x₀ ^ k) * c₁ * (x₀ ^ m) * c₂ := by
+--       show a * b =  (x₀ ^ k) * ((x₀ ^ k)⁻¹ * a) * (x₀ ^ m) * ((x₀ ^ m)⁻¹ * b)
+--       group
+--     _ = c₁ * (x₀ ^ k)  * (x₀ ^ m) * c₂ := by rw[Subgroup.mem_center_iff.1 h']
+--     _ = c₁ * (x₀ ^ k)  * ((x₀ ^ m) * c₂) := by group
+--     _ = c₁ * (x₀ ^ k)  *( c₂ * (x₀ ^ m) ):= by rw[Subgroup.mem_center_iff.1 h'']
+--     _ = c₁ * ((x₀ ^ k) * c₂) * (x₀ ^ m) := by group
+--     _ = c₁ * (c₂ * (x₀ ^ k)) * (x₀ ^ m) := by rw [Subgroup.mem_center_iff.1 h'']
+--     _ = c₁ * c₂ * (x₀ ^ (m+k)) := by group
+--     _ = c₂ * c₁ * (x₀ ^ (m+k)) := by rw[Subgroup.mem_center_iff.1 h']
+--     _ = c₂ * c₁ * (x₀ ^ m) * (x₀ ^ k) := by group
+--     _ = c₂ * (c₁ * (x₀ ^ m)) * (x₀ ^ k) := by group
+--     _ = c₂ * ((x₀ ^ m) * c₁) * (x₀ ^ k) := by rw[Subgroup.mem_center_iff.1 h']
+--     _ = (c₂ * (x₀ ^ m)) * (c₁ * (x₀ ^ k)) := by group
+--     _ = ((x₀ ^ m) * c₂) * ( (x₀ ^ k) * c₁) := by rw[Subgroup.mem_center_iff.1 h',Subgroup.mem_center_iff.1 h'']
+--     _ = b * a := by
+--       show ((x₀ ^ m) * ((x₀ ^ m)⁻¹ * b)) * ( (x₀ ^ k) * ((x₀ ^ k)⁻¹ * a)) = b * a
+--       group
+
+-- def centre_carrier {G : Type*} [Group G] : Set G := { g | ∀ h : G, g * h = h * g }
+
+-- def centre {G : Type*} [Group G]: Subgroup G where
+--   carrier := centre_carrier
+--   mul_mem' := by
+--     -- Rewrite the properties explicitly
+--     intro a b ha hb
+--     simp [centre_carrier]
+--     simp [centre_carrier] at ha hb
+--     intro h
+--     -- Show that $a * b * h = a * (b * h) = a * (h * b) = a * h * b = h * a * b$
+--     rw [mul_assoc, hb, ← mul_assoc, ha, mul_assoc]
+--   one_mem' := by
+--     simp [centre_carrier]
+--   inv_mem' := by
+--     -- Rewrite the properties explicitly
+--     simp [centre_carrier]
+--     intro x hx a
+--     -- Show that $x^{-1} * a = (a^{-1} * x)^{-1} = (x * a^{-1})^{-1} = a * x^{-1}$. Because the calculation is complicated, I use the calc mode.
+--     calc
+--       _ = (a⁻¹ * x)⁻¹ := by simp only [mul_inv_rev, inv_inv]
+--       _ = (x * a⁻¹)⁻¹ := by rw [hx a⁻¹]
+--       _ = _ := by simp only [mul_inv_rev, inv_inv]
+
+-- example {G : Type*} [Group G] : CommGroup (centre : Subgroup G) where
+--   mul_comm := by
+--     rintro ⟨a, ha⟩ ⟨b, _⟩
+--     -- The code in the next row is used in order to pick the value out
+--     simp only [Submonoid.mk_mul_mk, Subtype.mk.injEq]
+--     -- Use $\forall h \in G, a * h = h * a$ by taking $h = b$ in it
+--     simp [centre, centre_carrier] at ha
+--     -- Show $a * b = b * a$
+--     exact ha b
+
+-- example {G : Type*} [Group G] : (centre : Subgroup G).Normal where
+--   conj_mem := by
+--     -- Rewrite the properties explicitly
+--     intro n hn g
+--     simp [centre, centre_carrier] at hn
+--     simp [centre, centre_carrier]
+--     intro a
+--     -- Use $g * n * g^{-1} = n$ to complete the proof
+--     rw [mul_assoc g, hn, ← mul_assoc, mul_right_inv, one_mul, hn]
+
+-- variable {R : Type} [CommRing R]
+
+-- example (r : R) : Ideal R where
+--   carrier := {r * s | s : R}
+--   add_mem' := by
+--     -- $∀a, b ∈ rR$, let $a = r * a_1, b = r * b_1$
+--     intro a b ⟨a₁, ha⟩ ⟨b₁, hb⟩
+--     use a₁ + b₁
+--     -- $a + b = r * (a_1 + b_1)$, so $a + b ∈ rR$
+--     rw [← ha, ← hb, mul_add]
+--   zero_mem' := by use 0; ring
+--   smul_mem' := by
+--     -- $∀c ∈ R, x ∈ rR$, let $x = r * s$
+--     intro c x ⟨s, hx⟩
+--     use c * s
+--     -- $c * x = c * (r * s) = c * r * s = r * c * s = r * (c * s)$, so $c * x ∈ rR$
+--     rw [← hx, smul_eq_mul, ← mul_assoc, ← mul_assoc, mul_comm r]
+
+-- -- **First, prove the lemma**: For a finite subset $A$ of a group $G$, if $A$ is closed under multiplication, i.e., $\forall x, y \in A$, $x \cdot y \in A$, then for any $x \in A$, $xA = A$.
+-- lemma left_mul_eq {G:Type*} [Group G] {A : Finset G} (mul_memA : ∀ (a b : G) , a ∈ A → b ∈ A → a * b ∈ A) : ∀ (x : A) , { x * y | y ∈ A} = A := by
+--   intro x
+--   let f : A → { x * y| y ∈ A} := fun a => (by
+--     use x * a
+--     simp only [Set.mem_setOf_eq, mul_right_inj,
+--     exists_eq_right]
+--     exact Finset.coe_mem a)
+--   have finj : Function.Injective f:= by
+--     intro a b feq
+--     simp[f] at feq
+--     exact SetCoe.ext feq
+--   have Sub : {x * y | y ∈ A } ⊆ A := by
+--     intro a ⟨ k , hk1 , hk2 ⟩
+--     rw[ ←hk2 ]
+--     exact mul_memA x k x.2 hk1
+--   have Fin:Finite { x * y | y ∈ A } := by
+--     exact Finite.Set.subset A Sub
+--   have Fintp : Fintype {x * y | y ∈ A} := by exact Set.Finite.fintype Fin
+--   refine (Set.eq_of_subset_of_card_le ?hsub ?hcard)
+--   · exact Sub
+--   · exact Fintype.card_le_of_injective f finj
+
+-- example {G : Type*} [Group G] (S : Finset G) (hS_nonempty : S.Nonempty) (hS_mul_closed : ∀ (a b : G) , a ∈ S → b ∈ S → a * b ∈ S) : Subgroup G := by
+--   -- **Prove that $1 \in A$**: Since $A$ is non-empty, there exists $x \in A$. Because $xA = A$, there exists $y \in A$ such that $x \cdot y = x$, which implies $y = 1 \in A$.
+--   have one_mem : 1 ∈ S := by
+--     obtain ⟨x, hx⟩ := hS_nonempty
+--     have h₁ := left_mul_eq hS_mul_closed ⟨x, hx⟩
+--     have h₂ : x ∈ {x * y|y ∈S}:= by
+--       rw[h₁]
+--       simp only [Finset.mem_coe]
+--       trivial
+--     simp only [Set.mem_setOf_eq, mul_right_eq_self, exists_eq_right] at h₂
+--     exact h₂
+--   exact {
+--     carrier := S
+--     --**Prove closure**: By the definition of $S$, for any $a, b \in S$, $a \cdot b \in S$.
+--     mul_mem' := by
+--       exact fun {a b} a_1 a_2 => hS_mul_closed a b a_1 a_2
+--     --**Prove the existence of the identity element in $S$**: This has already been proven.
+--     one_mem' := one_mem
+--     --**Prove the existence of inverses in $S$**: Take any $a \in S$. Since $aA = A$ and $1 \in A$, $1 \in aA$, which means there exists $b \in A$ such that $a \cdot b = 1$. Therefore, $a^{-1} = b \in A$.
+--     inv_mem' := by
+--       intro a ha
+--       simp only [Finset.mem_coe]
+--       have h₁:=left_mul_eq hS_mul_closed ⟨a, ha⟩
+--       have h₂ :1∈ {a * y|y∈S}:= by
+--         rw[h₁]
+--         exact one_mem
+--       have h₃ : ∃ b ∈ S, a * b = 1 := by
+--         exact h₂
+--       obtain ⟨b, hb, hab⟩ := h₃
+--       have h₄ : a⁻¹ = b := by
+--         calc
+--           a⁻¹ = a⁻¹ * 1 := by rw [mul_one]
+--           _ = a⁻¹ * (a * b) := by rw [hab]
+--           _ = (a⁻¹ * a) * b := by rw [mul_assoc]
+--           _ = 1 * b := by rw [inv_mul_self]
+--           _ = b := by rw [one_mul]
+--       rw[h₄]
+--       exact hb
+--   }
+
+-- def MyReals := {x : ℝ // x ≠ -1}
+-- --Firstly, we show that G is a group.
+-- noncomputable instance : Group MyReals where
+--   --We show that for every $x$ $y$ in G, $x * y$ is also in G, that is, $x * y ≠ -1$.
+--   mul := by
+--     have haha (x : ℝ) : ¬ (x + 1 = 0) ↔ (x ≠ -1):= by
+--       have (p q : Prop): (p ↔ q) ↔ (¬ p ↔ ¬ q) := by tauto
+--       rw [← this]
+--       exact add_eq_zero_iff_eq_neg
+--     intro ⟨x, hx⟩ ⟨y, hy⟩
+--     use x + y + x * y
+--     intro h
+--     --Prove by contradiction. Note that if $x * y = -1$, then by definition, we have $(x + 1) * (y + 1) = 0$. This contrdicts the definition of $x$ and $y$.
+--     have : (x + 1) * (y + 1) = 0 := by
+--       calc
+--       _ = (x + y + x * y) + 1 := by ring
+--       _ = _ := by rw [h, add_left_neg]
+--     simp only [mul_eq_zero] at this
+--     simp_rw [← haha x] at hx
+--     simp_rw [← haha y] at hy
+--     tauto
+--   --Note that the composition law we defined is associative.
+--   mul_assoc := by
+--     intro x y z
+--     apply Subtype.val_inj.mp
+--     show (x.1 + y.1 + x.1 * y.1) + z.1 + (x.1 + y.1 + x.1 * y.1) * z.1 = x.1 + (y.1 + z.1 + y.1 * z.1) + x.1 * (y.1 + z.1 + y.1 * z.1)
+--     ring
+--   --We claim that  0 to be the identity element in this group.
+--   one := by
+--     use 0
+--     simp only [ne_eq, zero_eq_neg, one_ne_zero, not_false_eq_true]
+--   --It can be checked that for every x in G , $0 + x + 0 * x = x$, this shows that 0 is the left identity element.
+--   one_mul := by
+--     intro x
+--     apply Subtype.val_inj.mp
+--     show 0 + x.1 + 0 * x.1 = x.1
+--     ring
+--   --It can also be checked that for every x in G, $x + 0 + x * 0 = x$, this shows that 0 is the right identity element.
+--   mul_one := by
+--     intro x
+--     apply Subtype.val_inj.mp
+--     show x.1 + 0 + x.1 * 0 = x.1
+--     ring
+--   --For any $x$ in $G$, note that $\frac{-x}{x + 1}$ is the left inverse of x. Firstly, it can be checked that it's not equal to -1 for every $x$ in $G$.
+--   inv x := by
+--     use - x.1 / (x.1 + 1)
+--     by_contra h
+--     have : x.1 = (-1 + x.1) :=by
+--       calc
+--       _= (x.1 + 1)* (-1) * (-1) +(-1):= by ring_nf
+--       _= (x.1 + 1) * (-x.1 / (x.1 + 1)) * (-1) +(-1):=by rw[h]
+--       _= _ := by
+--         rw [mul_div_cancel₀]
+--         simp only [ne_eq, mul_neg, mul_one, neg_neg]
+--         apply add_comm
+--         have haha (x : ℝ) : ¬ (x + 1 = 0) ↔ (x ≠ -1):= by
+--           have (p q : Prop): (p ↔ q) ↔ (¬ p ↔ ¬ q) := by tauto
+--           rw [← this]
+--           exact add_eq_zero_iff_eq_neg
+--         exact (haha _).mpr x.2
+--     absurd this
+--     simp only [ne_eq, self_eq_add_left, neg_eq_zero, one_ne_zero, not_false_eq_true]
+--   --Then, by calculation, we can get that $\frac{-x}{x + 1} * x = 0$, thus it's the left inverse of $x$.
+--   mul_left_inv := by
+--     intro x
+--     dsimp [Inv.inv]
+--     unfold HMul.hMul
+--     unfold instHMul
+--     dsimp
+--     have: x = ⟨x.1, x.2⟩ := by rfl
+--     nth_rw 1 [this]
+--     simp only [ne_eq]
+--     apply Subtype.val_inj.mp
+--     simp only
+--     show - x.1 / (x.1 + 1) + x.1 + (- x.1 / (x.1 + 1)) * x.1 = 0
+--     calc
+--       _= (x.1 + 1) * (- x.1 / (x.1 + 1))  + x.1 :=by ring
+--       _= (- x.1) + x.1 :=by
+--         rw [mul_div_cancel₀]
+--         have haha (x : ℝ) : ¬ (x + 1 = 0) ↔ (x ≠ -1):= by
+--           have (p q : Prop): (p ↔ q) ↔ (¬ p ↔ ¬ q) := by tauto
+--           rw [← this]
+--           exact add_eq_zero_iff_eq_neg
+--         exact (haha _).mpr x.2
+--       _ = _ := by ring
+-- --Then we show that there exists an isomorphism between $G$ and $ℝˣ$.
+-- noncomputable def MyHom : MyReals ≃* ℝˣ where
+--   --Define f : $G$ $->$ $ℝˣ$   $x$ $↦$ $x + 1$, note that it's well defined since for every x in $G$, $f(x)$ is not equal to 0 by definition of $G$, thus $f(x)$ lies inside $ℝˣ$.
+--   toFun := by
+--     intro x
+--     exact Units.mk0 (x.1 + 1) (by
+--       have haha (x : ℝ) : ¬ (x + 1 = 0) ↔ (x ≠ -1):= by
+--           have (p q : Prop): (p ↔ q) ↔ (¬ p ↔ ¬ q) := by tauto
+--           rw [← this]
+--           exact add_eq_zero_iff_eq_neg
+--       exact (haha _).mpr x.2)
+--   --Note that the inverse function of f is $ℝˣ$ $->$ $G$   $x$ $↦$ $x - 1$.  It's also well defined since for every $x$ in $ℝˣ$, $f(x)$ is not equal to -1 by definition of $ℝˣ$, thus $f(x)$ lies inside $S$.  By checking directly, we can show that it's both the left and right inverse of $f$. This shows that f is inversible.
+--   invFun :=by
+--     intro x
+--     use x.1 - 1
+--     have : x.1 ≠ 0 :=by exact Units.ne_zero x
+--     simp only [ne_eq, sub_eq_neg_self, Units.ne_zero, not_false_eq_true]
+--   left_inv :=by
+--     intro x
+--     simp only [ne_eq, Units.val_mk0, add_sub_cancel_right, Subtype.coe_eta]
+--   right_inv:=by
+--     intro x
+--     simp only [sub_add_cancel, Units.mk0_val]
+--   --Finally, we should prove that f is a homomorphism. For any x y in $G$, we have $f(x * y) = f(x + y + x * y) = x + y + x * y + 1 = (x + 1) * (y + 1) = f(x) * f(y)$.This finishes the proof.
+--   map_mul' :=by
+--     intro x y
+--     dsimp
+--     ext
+--     dsimp
+--     show x.1 + y.1 + x.1 * y.1 + 1 = (x.1 + 1) * (y.1 + 1)
+--     ring
+--
+/-
+Given subset of a group $S\subset G$, the normalizer
+
+$$N_G(S):=\{g\in G:gSg^{-1}=S\}$$
+
+is a subgroup of $G$.
+-/
+-- def conj {G : Type*} [Group G] (S: Subgroup G) (g : G) :Set G := { p | ∃ s : S, p = g * s * g⁻¹ }
+
+-- def normaliser_carrier {G : Type*} [Group G] (S: Subgroup G): Set G := { g | (conj S g) = S}
+
+-- def normaliser {G : Type*} [Group G] (S: Subgroup G): Subgroup G where
+--   carrier := normaliser_carrier S
+--   -- Firstly, let $a$ $b$ be elements of the normaliser of S, we show that $a * b$ also belongs to the normaliser.
+--   mul_mem' := by
+--     intro a b ha hb
+--     have h1 : (conj S a) = S := ha
+--     have h2 : (conj S b) = S := hb
+--     have h3 : (conj S (a * b)) = S := by
+--       --To achieve this, we show that for elements x in G, x belongs to S if and only if x belongs to the conjugation of S by (a * b).
+--       ext x
+--       constructor
+--       --Firstly, we show that if x belongs to the conjugation of S by (a * b), then x belongs to  S.
+--       · intro h
+--         --There exists s , such that $x = (a * b) * s * (a * b)⁻¹$. Then , note that $b * s * b⁻¹$ belongs to S, we get that x also belongs to S.
+--         rcases h with ⟨s, hs⟩
+--         have tmp: (b * s.val * b⁻¹) ∈ (S : Set G) := by
+--           rw [← h2]
+--           exact ⟨s, rfl⟩
+--         have : a * (b * s.val * b⁻¹) * a⁻¹ ∈ (S : Set G) := by
+--           rw [← h1]
+--           use (⟨(b * s.val * b⁻¹), tmp⟩ : S)
+--         rw [← mul_assoc,← mul_assoc, mul_assoc (a * b * ↑s),← mul_inv_rev,← hs] at this
+--         exact this
+--       --Then, we show that if x belongs to S, then x belongs to the conjugation of S by (a * b).
+--       · intro h
+--         --There exists s , such that $x = a * s * a⁻¹$. There also exists k, such that $s = b * k * b⁻¹$. That is, $x = (a * b) * s * (a * b)⁻¹$, this proves our result.
+--         rcases h with x
+--         rw [← h1] at h
+--         rcases h with ⟨s ,hs⟩
+--         have tmp : s.val ∈ conj S b := by
+--           rw[h2]
+--           exact s.2
+--         rcases tmp with ⟨k ,hk⟩
+--         rw [hk] at hs
+--         unfold conj
+--         simp only [mul_inv_rev, Subtype.exists, exists_prop, Set.mem_setOf_eq]
+--         use k.1
+--         constructor
+--         · exact k.2
+--         rw [hs]
+--         group
+--     unfold  normaliser_carrier
+--     exact h3
+--   --Then, we show that the identity element of G is the identity element of the normaliser of S. That is clear since every element multiplies the identity equals to itself.
+--   one_mem' := by
+--     simp only
+--     unfold normaliser_carrier
+--     unfold conj
+--     simp only [Subtype.exists, exists_prop, Set.mem_setOf_eq, one_mul, inv_one, mul_one, exists_eq_right']
+--     rfl
+--   --Finally, we show that for every x element in the normaliser of S, then $x⁻¹$ is also an element in the normaliser of S.
+--   inv_mem' := by
+--     unfold normaliser_carrier
+--     simp only [Set.mem_setOf_eq]
+--     intro x h
+--     unfold conj
+--     simp only [inv_inv, Subtype.exists, exists_prop]
+--     ext p
+--     --It's equivalent to,for an element p in G,an element x in the normaliser of S, $∃ a ∈ S$ such that $p = x⁻¹ * a * x$ if and only if p belongs to S.
+--     constructor
+--     --We firstly show that $∃ a ∈ S$ such that $p = x⁻¹ * a * x$ then p belongs to S. By definition there exists r in S such that $a = x * r * x⁻¹$.  Then $p = r$, that is, p belongs to S.
+--     · intro h1
+--       rcases h1 with ⟨t,t1,t2⟩
+--       have h3 : t ∈ conj S x := by
+--         rw[h]
+--         apply t1
+--       rcases h3 with ⟨r, hr⟩
+--       rw [hr] at t2
+--       have : r = p := by
+--         rw[t2]
+--         group
+--       rw[← this]
+--       exact Subtype.mem r
+--     --Then, we show that if p belongs to S, then $∃ a ∈ S$ such that $p = x⁻¹ * a * x$. Note that $x * p * x⁻¹$ belongs to the conjugation of S by x, that is, it belongs to S. Thus, after the conjugation of $x⁻¹$, $x * p * x⁻¹$ is sent to p, that proves our result.
+--     · intro h1
+--       simp only [Set.mem_setOf_eq]
+--       have : x * p * x⁻¹ ∈ conj S x := by
+--         unfold conj
+--         simp only [Subtype.exists, exists_prop, Set.mem_setOf_eq, mul_left_inj, mul_right_inj,exists_eq_right']
+--         apply h1
+--       rw [h] at this
+--       use (x * p * x⁻¹)
+--       group
+--       simp only [zpow_neg, zpow_one, and_true]
+--       use this
+
+-- structure two_div_sum where
+--   x : ℤ
+--   y : ℤ
+--   h : 2 ∣ x + y
+
+-- -- Define addition, i.e., adding component-wise.
+-- instance : Add two_div_sum where
+--   add a b := {
+--     x := a.x + b.x,
+--     y := a.y + b.y,
+--     h := by
+--       have : (a.x + a.y) + (b.x + b.y) = (a.x + b.x) + (a.y + b.y) := by abel
+--       rw [← this]
+--       exact Int.dvd_add a.h b.h
+--   }
+
+-- -- Define negation, i.e., taking the negation of each component.
+-- instance : Neg two_div_sum where
+--   neg a := {
+--     x := -a.x,
+--     y := -a.y,
+--     h := by
+--       have : -(a.x + a.y) = -a.x + -a.y := by abel
+--       rw [← this]
+--       exact dvd_neg.2 a.h
+--   }
+
+-- -- Define the zero element, i.e., each component is zero.
+-- instance : Zero two_div_sum where
+--   zero := {
+--     x := 0,
+--     y := 0,
+--     h := by
+--       show 2 ∣ 0 + 0
+--       exact dvd_zero 2
+--   }
+
+-- #check two_div_sum.mk
+-- #check two_div_sum.mk.injEq
+
+-- instance : AddGroup two_div_sum := by
+--   -- Two elements are equal if and only if each of their components is equal.
+--   have my_ext (u v : two_div_sum) (h1 : u.x = v.x) (h2 : u.y = v.y) : u = v := by
+--     show ⟨u.x, u.y, u.h⟩ = (⟨v.x, v.y, v.h⟩ : two_div_sum)
+--     simp_rw [h1, h2]
+--   apply AddGroup.ofLeftAxioms
+--   -- To prove the associativity of addition, it suffices to show the equality of components, which follows from the associativity of addition on integers.
+--   · intros a b c
+--     apply my_ext
+--     · exact add_assoc a.x b.x c.x
+--     · apply add_assoc
+--   -- To prove the existence of an additive identity, it suffices to show the equality of components, which is evident in the integers.
+--   · intros a
+--     apply my_ext
+--     · exact zero_add a.x
+--     · exact zero_add a.y
+--   -- To prove the existence of a left additive inverse, it suffices to show the equality of components, which is evident in the integers.
+--   · intros a
+--     apply my_ext
+--     · apply add_left_neg
+--     · apply add_left_neg
+
+-- def H_cap_K {G : Type*} [Group G] (H K: Subgroup G) : Set G := H.carrier ∩ K.carrier
+
+-- -- First, prove that $H \cap K$ is a subgroup.
+-- def intersect_subgroup {G : Type*} [Group G] (H K: Subgroup G) : Subgroup G where
+--   carrier := H_cap_K H K
+--   --  To prove `mul_mem'`, for any $a, b \in H \cap K$, we have $a \in H$ and $b \in H$, so $a * b \in H$. Similarly, $a \in K$ and $b \in K$, so $a * b \in K$. Therefore, $a * b \in H \cap K$.
+--   mul_mem' := by
+--     intro a b ha hb
+--     simp only [H_cap_K] at ha hb ⊢
+--     exact ⟨H.mul_mem ha.1 hb.1, K.mul_mem ha.2 hb.2⟩
+--   -- To prove `one_mem'`, since $H$ and $K$ are subgroups, $1 \in H$ and $1 \in K$. Naturally, $1 \in H \cap K$.
+--   one_mem' := by
+--     simp only [H_cap_K]
+--     exact ⟨H.one_mem, K.one_mem⟩
+--   -- To prove `inv_mem'`, for any $a \in H \cap K$, we have $a \in H$ and $a \in K$, so $a^{-1} \in H$ and $a^{-1} \in K$. Naturally, $a^{-1} \in H \cap K$.
+--   inv_mem' := by
+--     intro a ha
+--     simp only [H_cap_K] at ha ⊢
+--     exact ⟨H.inv_mem ha.1, K.inv_mem ha.2⟩
+
+-- -- To prove that $H \cap K$ is a normal subgroup.
+-- example {G : Type*} [Group G] (H K: Subgroup G) [h₁: H.Normal] [h₂: K.Normal] : (intersect_subgroup H K).Normal := by
+--   -- To prove `normal_mem'`, it suffices to show that for any $a \in H \cap K$ and $b \in G$, we have $b * a * b^{-1} \in H \cap K$.
+--   constructor
+--   intro a ha b
+--   simp only [H_cap_K] at ha
+--   obtain ⟨haH, haK⟩ := ha
+--   /- For any $a \in H \cap K$ and $b \in G$, since $H$ is normal, we have $b * a * b^{-1} \in H$. Similarly, $b * a * b^{-1} \in K$. Therefore, $b * a * b^{-1} \in H \cap K$.-/
+--   have H₁ : b * a * b⁻¹ ∈ H := by
+--     exact h₁.conj_mem a haH b
+--   have H₂ : b * a * b⁻¹ ∈ K := by
+--     exact h₂.conj_mem a haK b
+--   exact ⟨H₁, H₂⟩
+
+-- example {G : Type*} [Group G] {a b c : G} (h : a * b * c = 1) : b * c * a = 1 ∧ c * a * b = 1 := by
+--   constructor
+--   -- 1. Compute $b * c * a = a^{-1} * (a * b * c) * a = a^{-1} * 1 * a = 1$.
+--   · calc
+--       b * c * a = a⁻¹ * (a * b * c) * a := by group
+--       _ = a⁻¹ * 1 * a := by rw [h]
+--       _ = 1 := by group
+--   -- Compute $c * a * b = c * (a * b * c) * c^{-1} = c * 1 * c^{-1} = 1$.
+--   · calc
+--       c * a * b = c *(a * b * c) * c⁻¹ := by group
+--       _ = c * 1 * c⁻¹ := by rw [h]
+--       _ = 1 := by group
+
+-- def power_subgroup {G : Type*} [CommGroup G] (n : ℕ): Set G := { s | s ^ n = 1 }
+
+-- example {G : Type*} [CommGroup G] (n : ℕ): Subgroup G where
+--   carrier := power_subgroup n
+--   /-
+--   To prove `mul_mem`, it suffices to show that for any $a, b \in \text{setG}$, $a * b \in \text{setG}$. This is done by proving $(a * b)^n = 1$. Since $G$ is an abelian group, we have:
+--     $$
+--    (a * b)^n = a^n * b^n = 1 * 1 = 1
+--     $$
+--   -/
+--   mul_mem' := by
+--     intro a b ha hb
+--     simp only [power_subgroup] at ha hb ⊢
+--     calc
+--       (a * b) ^ n = a ^ n * b ^ n := by rw [mul_pow]
+--       _ = 1 * 1 := by rw [ha, hb]
+--       _ = 1 := by simp
+--   -- To prove `one_mem`, it suffices to show that $1^n = 1$, which is evident.
+--   one_mem' := by
+--     simp only [power_subgroup]
+--     exact one_pow n
+--   -- To prove `inv_mem`, it suffices to show that if $a^n = 1$, then $(a^{-1})^n = 1$, which is also evident.
+--   inv_mem' := by
+--     intro a ha
+--     simp only [power_subgroup] at ha ⊢
+--     calc
+--       (a⁻¹) ^ n = (a ^ n)⁻¹ := by group
+--       _ = 1⁻¹ := by rw [ha]
+--       _ = 1 := by simp
+
+-- example {G : Type*} [Group G] (a b : G) : ((a * b)⁻¹ = a⁻¹ * b⁻¹ ↔ a * b = b * a) ∧ (a * b = b * a ↔ a * b * a⁻¹ * b⁻¹ = 1) := by
+--   constructor
+--   -- First, prove $(a * b)^{-1} = a^{-1} * b^{-1} \leftrightarrow a * b = b * a$.
+--   · constructor
+--     /-
+--     We first prove that $(a * b)^{-1} = a^{-1} * b^{-1}$ implies $a * b = b * a$. Compute:
+--    $$
+--    a * b = (a * b)^{-1^{-1}} = (a^{-1} * b^{-1})^{-1} = b * a
+--    $$
+--     -/
+--     · intro h
+--       calc
+--         a * b = (a * b)⁻¹⁻¹ := by group
+--         _ = (a⁻¹ * b⁻¹)⁻¹ := by rw [h]
+--         _ = b * a := by group
+--     /-
+--     Next, prove that $a * b = b * a$ implies $a * b * a^{-1} * b^{-1} = 1$. Compute:
+--    $$
+--    a * b * a^{-1} * b^{-1} = b * a * a^{-1} * b^{-1} = b * b^{-1} = 1
+--    $$
+--     -/
+--     · intro h
+--       calc
+--         (a * b)⁻¹ = (b * a)⁻¹ := by rw [h]
+--         _ = a⁻¹ * b⁻¹ := by group
+--   -- Next, prove $a * b = b * a \leftrightarrow a * b * a^{-1} * b^{-1} = 1$.
+--   · constructor
+--     /-
+--     First, prove that $a * b = b * a$ implies $a * b * a^{-1} * b^{-1} = 1$. Compute:
+--    $$
+--    a * b * a^{-1} * b^{-1} = b * a * a^{-1} * b^{-1} = b * b^{-1} = 1
+--    $$
+--     -/
+--     · intro h
+--       calc
+--         a * b * a⁻¹ * b⁻¹ = b * a * a⁻¹ * b⁻¹ := by rw [h]
+--         _ = 1 := by group
+--     /-
+--     Next, prove that $a * b * a^{-1} * b^{-1} = 1$ implies $a * b = b * a$. Compute:
+--    $$
+--    a * b = a * b * a^{-1} * b^{-1} * b * a = 1 * b * a = b * a
+--    $$
+--     -/
+--     · intro h
+--       calc
+--         a * b = a * b * a ⁻¹ * b ⁻¹ * b * a := by group
+--         _ = 1 * b * a := by rw [h]
+--         _ = b * a := by group
+
+-- def f_sum : ℝ × ℝ →+ ℝ where
+--   -- First, define the function content.
+--   toFun := fun x => x.1 + x.2
+--   /-
+--   Prove that the zero element maps to the zero element. This can be done by expanding according to the definition:
+--    $$
+--    f(0, 0) = 0 + 0 = 0
+--    $$
+--   -/
+--   map_zero' := by
+--     simp only [Prod.fst_zero, Prod.snd_zero, add_zero]
+--   /-
+--   Prove that the function preserves addition, i.e., for any $x, y$, $f(x + y) = f(x) + f(y)$. Expand according to the definition, then use the arithmetic properties of $\mathbb{R}$:
+--    $$
+--    f((x_1, x_2) + (y_1, y_2)) = f(x_1 + y_1, x_2 + y_2) = (x_1 + y_1) + (x_2 + y_2)
+--    $$
+--    and
+--    $$
+--    f(x_1, x_2) + f(y_1, y_2) = (x_1 + x_2) + (y_1 + y_2)
+--    $$
+--    By the commutativity and associativity of addition in $\mathbb{R}$, these two expressions are equal.
+--   -/
+--   map_add' := by
+--     intro x y
+--     simp only [Prod.fst_add, Prod.snd_add]
+--     exact add_add_add_comm x.1 y.1 x.2 y.2
+
+-- def centre_carrier {G : Type*} [Group G] : Set G := { g | ∀ h : G, g * h = h * g }
+
+-- def centre (G : Type*) [Group G]: Subgroup G where
+--   carrier := centre_carrier
+--   /-
+--   To prove the closure of multiplication, for any $a, b \in \text{setG}$ and $h \in G$, note that:
+--    $$
+--    a * b * h = a * (b * h) = a * (h * b) = h * (a * b)
+--    $$
+--   -/
+--   mul_mem' := by
+--     intro a b ha hb h
+--     simp only [centre_carrier] at ha hb ⊢
+--     calc
+--       a * b * h = a * (b * h) := by group
+--       _ = a * (h * b) := by rw [hb]
+--       _ = (a * h) * b := by group
+--       _ = (h * a) * b := by rw [ha]
+--       _ = h * (a * b) := by group
+--   -- To prove the existence of an identity element, it suffices to verify that $1$ satisfies the requirements.
+--   one_mem' := by
+--     intro h
+--     calc
+--       1 * h = h := by group
+--       _ = h * 1 := by group
+--   /-
+--   To prove the existence of an inverse element, note that:
+--    $$
+--    a^{-1} * h = (h^{-1} * a)^{-1} = (a * h^{-1})^{-1} = h * a^{-1}
+--    $$
+--   -/
+--   inv_mem' := by
+--     intro a ha h
+--     simp only [centre_carrier] at ha ⊢
+--     have : a * h⁻¹ = h⁻¹ * a := by
+--       exact ha h⁻¹
+--     calc
+--       a⁻¹ * h = (h⁻¹ * a)⁻¹ := by group
+--       _ = (a * h⁻¹)⁻¹ := by rw [this]
+--       _ = h * a⁻¹ := by group
+
+-- example (G : Type*) [Group G] : CommGroup (centre G) where
+--   -- To prove commutativity, note that by definition $\forall h \in G$, $g * h = h * g$.
+--   mul_comm := by
+--     intro a b
+--     let aval := a.val
+--     have aval' := a.val
+--     let aproperty := a.property
+--     change aval ∈ centre G at aproperty
+--     change ∀ (h : G), a.val * h = h * a.val at aproperty
+--     exact SetCoe.ext (aproperty ↑b)
+
+-- noncomputable instance (S : Type*) : Group {f : S → S // f.Bijective} where
+--   --  **Define multiplication**: Multiplication is defined as the composition of functions.
+--   mul := by
+--     intro f g
+--     exact ⟨f.val ∘ g.val, Function.Bijective.comp f.2 g.2⟩
+-- /-
+--   **Associativity of multiplication**: According to the definition of function composition, associativity is evident:
+--    $$
+--    ((f \circ g) \circ h)(x) = (f \circ (g \circ h))(x)
+--    $$
+-- -/
+--   mul_assoc := by
+--     intros f g h
+--     ext x
+--     exact rfl
+--   -- **Define the identity element**: The identity element is the identity function.
+--   one := by
+--     use id
+--     exact Function.bijective_id
+--   /-
+--   **Left and right identity**: For any bijective function \( f \), composing it with the identity function on either side yields \( f \). This is evident:
+--    $$
+--    (id \circ f)(x) = f(x) \quad \text{and} \quad (f \circ id)(x) = f(x)
+--    $$
+--   -/
+--   one_mul := by
+--     intro f
+--     ext x
+--     exact rfl
+--   mul_one := by
+--     intro f
+--     ext x
+--     exact rfl
+--   -- **Define the inverse**: The inverse element of a bijective function is its inverse function.
+--   inv f := ⟨f.1.surjInv f.2.2, Function.bijective_iff_has_inverse.mpr
+--     ⟨f.1, f.1.rightInverse_surjInv f.2.2, f.1.leftInverse_surjInv f.2⟩⟩
+--   /-
+--   **Left inverse**: According to the definition of the inverse function, the left inverse is evident:
+--    $$
+--    (f^{-1} \circ f)(x) = x
+--    $$
+--   -/
+--   mul_left_inv := by exact fun f => Subtype.val_inj.mp <|
+--     Function.RightInverse.id (f.1.leftInverse_surjInv f.2)
+
+-- noncomputable instance: CommGroup {z : ℂ // ‖z‖ = 1} where
+--   --**Define multiplication**: Multiplication is defined as multiplication of complex numbers.
+--   mul := by
+--     intro z1 z2
+--     use z1.val * z2.val
+--     rw [norm_mul, z1.property, z2.property, one_mul]
+-- /-
+-- **Associativity of multiplication**: This follows naturally from the definition:
+--    $$
+--    (z_1 \cdot z_2) \cdot z_3 = z_1 \cdot (z_2 \cdot z_3)
+--    $$
+-- -/
+--   mul_assoc := by
+--     intros z1 z2 z3
+--     ext
+--     simp
+--     apply mul_assoc
+--   -- **Define the identity element**: The identity element is 1.
+--   one := by
+--     use 1
+--     simp
+-- /-
+-- **Left identity**: For any complex number \( z \), multiplying it by 1 on the left yields \( z \):
+--    $$
+--    1 \cdot z = z
+--    $$
+-- -/
+--   one_mul := by
+--     intro z
+--     ext
+--     simp
+--     apply one_mul
+-- /-
+-- **Right identity**: For any complex number \( z \), multiplying it by 1 on the right yields \( z \):
+--    $$
+--    z \cdot 1 = z
+--    $$
+-- -/
+--   mul_one := by
+--     intro z
+--     ext
+--     simp
+--     apply mul_one
+--   -- **Define the inverse**: The inverse element of a complex number \( z \) is its multiplicative inverse.
+--   inv := by
+--     intro z
+--     use z.val⁻¹
+--     rw [norm_inv, z.property]
+--     exact inv_one
+--   /-
+--   **Left inverse**: For any non-zero complex number \( z \), multiplying it by its inverse on the left yields 1:
+--    $$
+--    z^{-1} \cdot z = 1
+--    $$
+--   -/
+--   mul_left_inv := by
+--     intro z
+--     ext
+--     simp
+--     change z.val⁻¹ * z.val = 1
+--     apply inv_mul_cancel
+--     intro h
+--     apply norm_eq_zero.mpr at h
+--     rw [z.property] at h
+--     exact one_ne_zero h
+--   /-
+--   **Commutativity of multiplication**: This follows from the properties of complex numbers:
+--    $$
+--    z_1 \cdot z_2 = z_2 \cdot z_1
+--    $$
+--   -/
+--   mul_comm := by
+--     intros z1 z2
+--     ext
+--     simp
+--     apply mul_comm
+
+-- theorem coprime_dvd_mul {a b m : ℕ} (h1 : a ∣ m) (h2 : b ∣ m) (h3 : Nat.gcd a b = 1) : (a * b) ∣ m := by
+--   -- Let $a \cdot k_1 = m$ and $b \cdot k_2 = m$.
+--   rcases h1 with ⟨ k1, hk1 ⟩
+--   rcases h2 with ⟨ k2, hk2 ⟩
+--   -- Since $\gcd(a, b) = 1$, there exist $y$ and $x$ such that $a \cdot y + b \cdot x = 1$.
+--   let y := Nat.gcdA a b
+--   let x := Nat.gcdB a b
+--   have : a * y + b * x = 1 := by
+--     trans (Nat.gcd a b : ℤ)
+--     · exact Eq.symm (Nat.gcd_eq_gcd_ab a b)
+--     · exact congrArg Nat.cast h3
+--   /-
+--   Calculate:
+--    $$
+--    a \cdot b \cdot (k_1 \cdot x + k_2 \cdot y) = (a \cdot k_1) \cdot b \cdot x + (b \cdot k_2) \cdot a \cdot y = m \cdot b \cdot x + m \cdot a \cdot y = m \cdot (b \cdot x + a \cdot y) = m \cdot 1 = m
+--   $$
+--   -/
+--   have : a * b * (k1 * x + k2 * y) = m:= by
+--     calc
+--       _ = (a * k1) * b * x + (b * k2) * a * y := by ring
+--       _ = m * b * x + m * a * y := by
+--         nth_rw 1 [hk1]
+--         nth_rw 1 [hk2]
+--         exact rfl
+--       _ = m * (b * x + a * y) := by ring
+--       _ = m * 1 := by rw [add_comm, this]
+--       _ = m := by ring
+--   -- Therefore, $a \cdot b \mid m$.
+--   have : (a : ℤ) * b ∣ m := by
+--     use k1 * x + k2 * y
+--     exact this.symm
+--   exact Int.ofNat_dvd.mp this
+
+-- First, prove that $\{-1, 1\}$ is a subgroup of $\mathbb{R}^\times$.
+-- def one_neg_one : Subgroup ℝˣ where
+--   carrier := {1, -1}
+--   -- For the closure under multiplication, simply enumerate each case.
+--   mul_mem' := by
+--     intro a b ha hb
+--     simp only [Set.mem_insert_iff, Set.mem_singleton_iff] at *
+--     rcases ha with (rfl | rfl)
+--     repeat rcases hb with (rfl | rfl); repeat norm_num
+--   -- The identity element is 1, which can be easily checked.
+--   one_mem' := by simp only [Set.mem_insert_iff, Set.mem_singleton_iff, units_ne_neg_self, or_false]
+--   -- The inverses of 1 and -1 are 1 and -1, respectively.
+--   inv_mem' := by
+--     intro a ha
+--     simp only [Set.mem_insert_iff, Set.mem_singleton_iff] at *
+--     rcases ha with (rfl | rfl); repeat norm_num
+
+-- noncomputable def f_sum : ℝˣ →* one_neg_one where
+--   -- Define a mapping $f_{sum}: \mathbb{R}^\times \to \{-1, 1\}$, such that $f_{sum}(x) = 1$ if and only if $x > 0$, and $f_{sum}(x) = -1$ if and only if $x < 0$.
+--   toFun x := ⟨⟨x.1 / |x.1|, |x.1| / x.1, by field_simp, by field_simp⟩, by
+--     show _ = 1 ∨ _ = -1
+--     have : x.1 / |x.1| = 1 ∨ x.1 / |x.1| = -1 := by
+--       apply eq_or_eq_neg_of_abs_eq
+--       rw [abs_div]
+--       simp only [abs_abs, ne_eq, abs_eq_zero, Units.ne_zero, not_false_eq_true, div_self]
+--     rcases this with (hl | hr)
+--     · left; ext; exact hl
+--     · right; ext; exact hr⟩
+--   --Prove that the identity element maps to the identity element by computation according to the definition.
+--   map_one' := by
+--     dsimp only [ne_eq, Units.val_one]
+--     ext; norm_num
+--   -- Prove that the mapping preserves multiplication by computation according to the definition.
+--   map_mul' := by
+--     intro x y
+--     ext
+--     show x.1 * y.1 / |x.1 * y.1| = (x.1 / |x.1|) * (y.1 / |y.1|)
+--     rw [abs_mul]
+--     field_simp
+
 -- lemma upup (d s t: ℕ) (a b : ℤ) (ha: a ≥ 0) (hb: b ≥ 0) (h: s * a + d = t * b) : ∃ m n : ℕ, s * m + d =  t * n := by
 --   refine' ⟨(Int.natAbs a), (Int.natAbs b), _⟩
 --   rw [← (Int.natAbs_of_nonneg ha), ← (Int.natAbs_of_nonneg hb)] at h
@@ -15,17 +2166,21 @@ import Mathlib
 --     let y := Nat.gcdB s t
 --     have L1 : s * (t * (|x| + |y|) - x) +  s.gcd t = t * (s *(|x| + |y|) + y) := by
 --       rw [Nat.gcd_eq_gcd_ab]
---       simp only
 --       linarith
 --     have L2 : 0 ≤ (t * (|x| + |y|) - x):= by
 --       simp only [sub_nonneg]
 --       have : t ≥ 1 := by exact h₂
---       nth_rw 1 [← one_mul (gcdA s t)]
+--       nth_rw 1 [← one_mul x]
+--       rw[mul_comm,mul_comm ↑t (|gcdA s t| + |gcdB s t|)]
 --       apply mul_le_mul
---       simp only [one_le_cast]
---       apply this
 --       apply le_add_of_le_of_nonneg
 --       exact le_abs_self (gcdA s t)
+--       apply abs_nonneg
+--       exact Int.toNat_le.mp h₂
+--       simp only [zero_le_one]
+--       apply le_add_of_le_of_nonneg
+--       repeat
+--       apply abs_nonneg
 --       apply abs_nonneg
 --     have L3 : 0 ≤ (s * (|x| + |y|) + y) := by
 --       have h1 : s ≥ 1 := by exact h₁
@@ -39,7 +2194,7 @@ import Mathlib
 --       linarith
 --       linarith
 --       have :  |gcdB s t| ≥ gcdB s t := by exact le_abs_self (gcdB s t)
---       nth_rw 2 [← one_mul (gcdB s t)]
+--       nth_rw 2 [← one_mul y]
 --       have h2 : 1 * (-gcdB s t) ≤ ↑s * |gcdB s t| := by
 --         rw[mul_comm, mul_comm ↑s |gcdB s t|]
 --         apply mul_le_mul
@@ -51,12 +2206,1959 @@ import Mathlib
 --         linarith
 --         apply abs_nonneg
 --       linarith
-
 --     exact upup (Nat.gcd s t) s t (t * (|x| + |y|) - x) (s * (|x| + |y|) + y) L2 L3 L1
 
-example {G : Type*} [Group G] (h: ∀ (x y : G), (x * y)⁻¹ = x⁻¹ * y⁻¹) : CommGroup G := by
-refine CommGroup.mk ?mul_comm
-intro a b
-nth_rw 1 [←DivisionMonoid.inv_inv a ]
-nth_rw 1 [←DivisionMonoid.inv_inv b]
-rw[←DivisionMonoid.mul_inv_rev,←h,DivisionMonoid.inv_inv]
+-- open scoped Pointwise
+-- open Function MulOpposite Set
+-- example {G : Type*} [Group G] (H: Subgroup G) (prop: ∀ (h: H), ∀ (g: G), g * h * g⁻¹ ∈ H): ∀ (g : G),  g • (H : Set G) = op g • (H : Set G) := by
+--   /-
+--   **First, prove that $H$ is a normal subgroup**:
+--    - By the given condition $\text{prop}: \forall (h \in H), \forall (g \in G), g * h * g^{-1} \in H$, we have that $H$ is closed under conjugation by any element of $G$.
+--   -/
+--   have: H.Normal := by
+--     refine { conj_mem := ?conj_mem }
+--     simp only [Subtype.forall] at prop
+--     exact prop
+--   /-
+--   **By the equivalent condition of a normal subgroup**:
+--    - For a normal subgroup $H$, the left coset $gH$ is equal to the right coset $Hg$. This is what we needed to prove.
+--   -/
+--   rw [normal_iff_eq_cosets] at this
+--   exact this
+
+-- section Example_4109B
+
+-- section Formalize
+-- /- Let G be a group of order n and H is a subgroup of index p in G,
+-- where p is the smallest prime that divides n.
+-- Prove that H is a normal subgroup of G.-/
+
+-- variable{G : Type*}[Group G][Fintype G] -- G是有限群
+-- variable(H : Subgroup G) -- H是G的子群
+-- variable(p n : Nat)
+
+-- export Fintype(card)
+-- export Subgroup(index)
+-- export Nat(minFac)
+
+-- variable(OrderOfG_eq_n : (card G = n) ) -- G的阶数是n
+-- variable(IndexOfH_eq_p : (H.index = p) ) -- H的指数是p
+-- variable(p_minFac_n : (n.minFac = p) ) -- p是n的最小因数
+
+-- /- need to sorry-elim -/
+-- instance: Subgroup.Normal H where
+--   conj_mem := sorry
+
+-- end Formalize
+
+-- end Example_4109B
+
+-- lemma left_mul_eq {G:Type*} [Group G] {A : Finset G} (mul_memA : ∀ (a b : G) , a ∈ A → b ∈ A → a * b ∈ A) : ∀ (x : A) , { x * y | y ∈ A} = A := by
+--   intro x
+--   -- Define a mapping $f$, which maps an element $a$ in $A$ to $x \cdot a$.
+--   let f : A → { x * y| y ∈ A} := fun a => (by
+--     use x * a
+--     simp only [Set.mem_setOf_eq, mul_right_inj,
+--     exists_eq_right]
+--     exact Finset.coe_mem a)
+--   -- Prove that the mapping $f$ is injective: if $f(a) = f(b)$, then $a = b$.
+--   have finj : Function.Injective f:= by
+--     intro a b feq
+--     simp[f] at feq
+--     exact SetCoe.ext feq
+--   -- Prove that the set $\{x \cdot y \mid y \in A\}$ is a subset of $A$: for any $a \in \{x \cdot y \mid y \in A\}$, there exists $k \in A$ such that $a = x \cdot k$, so $a \in A$.
+--   have Sub : {x * y | y ∈ A } ⊆ A := by
+--     intro a ⟨ k , hk1 , hk2 ⟩
+--     rw[ ←hk2 ]
+--     exact mul_memA x k x.2 hk1
+--   -- Prove that the set $\{x \cdot y \mid y \in A\}$ is finite: because it is a subset of the finite set $A$.
+--   have Fin:Finite { x * y | y ∈ A } := by
+--     exact Finite.Set.subset A Sub
+--   -- Prove the equality of the sets by proving the subset relationship and the equality of their sizes under the injective mapping. By the subset relation and the injectivity of $f$, the two sets have equal sizes, hence they are equal.
+--   have Fintp : Fintype {x * y | y ∈ A} := by exact Set.Finite.fintype Fin
+--   refine (Set.eq_of_subset_of_card_le ?hsub ?hcard)
+--   · exact Sub
+--   · exact Fintype.card_le_of_injective f finj
+
+-- example {G : Type*} [Group G] (S : Finset G) (hS_nonempty : S.Nonempty) (hS_mul_closed : ∀ (a b : G) , a ∈ S → b ∈ S → a * b ∈ S) : Subgroup G := by
+--   -- **Prove that $1 \in A$**: Since $S$ is non-empty, there exists $x \in S$.
+--   have one_mem : 1 ∈ S := by
+--     obtain ⟨x, hx⟩ := hS_nonempty
+--     -- Because $xS = S$, there exists $y \in S$ such that $x \cdot y = x$, which implies $y = 1 \in S$.
+--     have h₁ := left_mul_eq hS_mul_closed ⟨x, hx⟩
+--     have h₂ : x ∈ {x * y|y ∈S}:= by
+--       rw[h₁]
+--       simp only [Finset.mem_coe]
+--       trivial
+--     simp only [Set.mem_setOf_eq, mul_right_eq_self, exists_eq_right] at h₂
+--     exact h₂
+--   exact {
+--     carrier := S
+--     --**Prove closure**: By the definition of $S$, for any $a, b \in S$, $a \cdot b \in S$.
+--     mul_mem' := by
+--       exact fun {a b} a_1 a_2 => hS_mul_closed a b a_1 a_2
+--     --**Prove the existence of the identity element in $S$**: This has already been proven.
+--     one_mem' := one_mem
+--     --**Prove the existence of inverses in $S$**: Take any $a \in S$.
+--     inv_mem' := by
+--       intro a ha
+--       simp only [Finset.mem_coe]
+--       -- Since $aA = A$ and $1 \in A$, $1 \in aA$, which means there exists $b \in A$ such that $a \cdot b = 1$.
+--       have h₁:=left_mul_eq hS_mul_closed ⟨a, ha⟩
+--       have h₂ :1∈ {a * y|y∈S}:= by
+--         rw[h₁]
+--         exact one_mem
+--       have h₃ : ∃ b ∈ S, a * b = 1 := by
+--         exact h₂
+--       obtain ⟨b, hb, hab⟩ := h₃
+--       --Therefore, $a^{-1} = b \in A$.
+--       have h₄ : a⁻¹ = b := by
+--         calc
+--           a⁻¹ = a⁻¹ * 1 := by rw [mul_one]
+--           _ = a⁻¹ * (a * b) := by rw [hab]
+--           _ = (a⁻¹ * a) * b := by rw [mul_assoc]
+--           _ = 1 * b := by rw [inv_mul_self]
+--           _ = b := by rw [one_mul]
+--       rw[h₄]
+--       exact hb
+--   }
+
+-- theorem comm_of_square_eq (G : Type*) [Group G] (a b : G)
+--   (h : (a * b) ^ 2 = a ^ 2 * b ^ 2) : a * b = b * a := by
+--   -- 1.compute : $a * b = a⁻¹ * ( a * a * b * b) * b⁻¹ = a⁻¹ * ( a ^ 2 * b ^ 2) * b⁻¹ = a⁻¹ * (a * b)^2  * b⁻¹ = a⁻¹ * ((a * b) * (a * b))  * b⁻¹ = b * a$
+--   calc
+--     a * b = a⁻¹ * ( a * a * b * b) * b⁻¹ := by group
+--     _ = a⁻¹ * ( a ^ 2 * b ^ 2) * b⁻¹ := by group
+--     _ = a⁻¹ * (a * b)^2  * b⁻¹ := by rw[ ← h]
+--     _ = a⁻¹ * ((a * b) * (a * b))  * b⁻¹ := by rw[← pow_two]
+--     _ = b * a := by group
+
+-- def one_neg_one : Subgroup ℝˣ where
+--   carrier := {1, -1}
+--     /-
+--   **For the closure under multiplication, simply enumerate each case**.
+--    - $1 \cdot 1 = 1$
+--    - $1 \cdot (-1) = -1$
+--    - $(-1) \cdot 1 = -1$
+--    - $(-1) \cdot (-1) = 1$
+--   -/
+--   mul_mem' := by
+--     intro a b ha hb
+--     simp only [Set.mem_insert_iff, Set.mem_singleton_iff] at *
+--     rcases ha with (rfl | rfl)
+--     repeat rcases hb with (rfl | rfl); repeat norm_num
+
+--   /-
+--   **The inverses of 1 and -1 are 1 and -1, respectively**.
+--    - The inverse of $1$ is $1$ because $1 \cdot 1 = 1$.
+--    - The inverse of $-1$ is $-1$ because $-1 \cdot (-1) = 1$.
+--   -/
+
+--   one_mem' := by simp only [Set.mem_insert_iff, Set.mem_singleton_iff, units_ne_neg_self, or_false]
+--   -- The inverses of 1 and -1 are 1 and -1, respectively.
+--   inv_mem' := by
+--     intro a ha
+--     simp only [Set.mem_insert_iff, Set.mem_singleton_iff] at *
+--     rcases ha with (rfl | rfl); repeat norm_num
+
+-- noncomputable def f_sum : ℝˣ →* one_neg_one where
+--   /-
+--   **Define the mapping** $f(x) = \frac{x}{|x|}$.
+--    - Note that $\frac{x}{|x|} \cdot \frac{|x|}{x} = 1$.
+--    - Also, $\frac{x}{|x|} = 1$ or $-1$.
+--   -/
+--   toFun x := ⟨⟨x.1 / |x.1|, |x.1| / x.1, by field_simp, by field_simp⟩, by
+--     show _ = 1 ∨ _ = -1
+--     have : x.1 / |x.1| = 1 ∨ x.1 / |x.1| = -1 := by
+--       apply eq_or_eq_neg_of_abs_eq
+--       rw [abs_div]
+--       simp only [abs_abs, ne_eq, abs_eq_zero, Units.ne_zero, not_false_eq_true, div_self]
+--     rcases this with (hl | hr)
+--     · left; ext; exact hl
+--     · right; ext; exact hr⟩
+--   /-
+--   **Prove that the identity element maps to the identity element by computation according to the definition**.
+--    - For $x = 1$, $f(1) = \frac{1}{|1|} = 1$.
+--   -/
+--   map_one' := by
+--     dsimp only [ne_eq, Units.val_one]
+--     ext; norm_num
+--   /-
+--   **Prove that the mapping preserves multiplication by computation according to the definition**.
+--    - For any $x, y \in \mathbb{R}^\times$, $f(x \cdot y) = \frac{x \cdot y}{|x \cdot y|} = \frac{x}{|x|} \cdot \frac{y}{|y|} = f(x) \cdot f(y)$.
+--   -/
+--   map_mul' := by
+--     intro x y
+--     ext
+--     show x.1 * y.1 / |x.1 * y.1| = (x.1 / |x.1|) * (y.1 / |y.1|)
+--     rw [abs_mul]
+--     field_simp
+
+/-
+$G$ is the set $\{x \in \mathbb{R}: x \neq-1\}$ with the operation $x * y=x+y+x y$. Show that $f(x)=x-1$ is an isomorphism from the multiplication group $\mathbb{R}^{\times}$ to $G$.
+-/
+-- def MyReals := {x : ℝ // x ≠ -1}
+-- --Firstly, we show that G is a group.
+-- noncomputable instance : Group MyReals where
+--   --We show that for every $x$ $y$ in G, $x * y$ is also in G, that is, $x * y ≠ -1$.
+--   mul := by
+--     have ha (x : ℝ) : ¬ (x + 1 = 0) ↔ (x ≠ -1):= by
+--       have (p q : Prop): (p ↔ q) ↔ (¬ p ↔ ¬ q) := by tauto
+--       rw [← this]
+--       exact add_eq_zero_iff_eq_neg
+--     intro ⟨x, hx⟩ ⟨y, hy⟩
+--     use x + y + x * y
+--     intro h
+--     --Prove by contradiction. Note that if $x * y = -1$, then by definition, we have $(x + 1) * (y + 1) = 0$. This contrdicts the definition of $x$ and $y$.
+--     have : (x + 1) * (y + 1) = 0 := by
+--       calc
+--       _ = (x + y + x * y) + 1 := by ring
+--       _ = _ := by rw [h, add_left_neg]
+--     simp only [mul_eq_zero] at this
+--     simp_rw [← ha x] at hx
+--     simp_rw [← ha y] at hy
+--     tauto
+--   --Note that the composition law we defined is associative.
+--   mul_assoc := by
+--     intro x y z
+--     apply Subtype.val_inj.mp
+--     show (x.1 + y.1 + x.1 * y.1) + z.1 + (x.1 + y.1 + x.1 * y.1) * z.1 = x.1 + (y.1 + z.1 + y.1 * z.1) + x.1 * (y.1 + z.1 + y.1 * z.1)
+--     ring
+--   --We claim that  0 to be the identity element in this group.
+--   one := by
+--     use 0
+--     simp only [ne_eq, zero_eq_neg, one_ne_zero, not_false_eq_true]
+--   --It can be checked that for every x in G , $0 + x + 0 * x = x$, this shows that 0 is the left identity element.
+--   one_mul := by
+--     intro x
+--     apply Subtype.val_inj.mp
+--     show 0 + x.1 + 0 * x.1 = x.1
+--     ring
+--   --It can also be checked that for every x in G, $x + 0 + x * 0 = x$, this shows that 0 is the right identity element.
+--   mul_one := by
+--     intro x
+--     apply Subtype.val_inj.mp
+--     show x.1 + 0 + x.1 * 0 = x.1
+--     ring
+--   --For any $x$ in $G$, note that $\frac{-x}{x + 1}$ is the left inverse of x. Firstly, it can be checked that it's not equal to -1 for every $x$ in $G$.
+--   inv x := by
+--     use - x.1 / (x.1 + 1)
+--     by_contra h
+--     have : x.1 = (-1 + x.1) :=by
+--       calc
+--       _= (x.1 + 1)* (-1) * (-1) +(-1):= by ring_nf
+--       _= (x.1 + 1) * (-x.1 / (x.1 + 1)) * (-1) +(-1):=by rw[h]
+--       _= _ := by
+--         rw [mul_div_cancel₀]
+--         simp only [ne_eq, mul_neg, mul_one, neg_neg]
+--         apply add_comm
+--         have ha (x : ℝ) : ¬ (x + 1 = 0) ↔ (x ≠ -1):= by
+--           have (p q : Prop): (p ↔ q) ↔ (¬ p ↔ ¬ q) := by tauto
+--           rw [← this]
+--           exact add_eq_zero_iff_eq_neg
+--         exact (ha _).mpr x.2
+--     absurd this
+--     simp only [ne_eq, self_eq_add_left, neg_eq_zero, one_ne_zero, not_false_eq_true]
+--   --Then, by calculation, we can get that $\frac{-x}{x + 1} * x = 0$, thus it's the left inverse of $x$.
+--   mul_left_inv := by
+--     intro x
+--     dsimp [Inv.inv]
+--     unfold HMul.hMul
+--     unfold instHMul
+--     dsimp
+--     have: x = ⟨x.1, x.2⟩ := by rfl
+--     nth_rw 1 [this]
+--     simp only [ne_eq]
+--     apply Subtype.val_inj.mp
+--     simp only
+--     show - x.1 / (x.1 + 1) + x.1 + (- x.1 / (x.1 + 1)) * x.1 = 0
+--     calc
+--       _= (x.1 + 1) * (- x.1 / (x.1 + 1))  + x.1 :=by ring
+--       _= (- x.1) + x.1 :=by
+--         rw [mul_div_cancel₀]
+--         have ha (x : ℝ) : ¬ (x + 1 = 0) ↔ (x ≠ -1):= by
+--           have (p q : Prop): (p ↔ q) ↔ (¬ p ↔ ¬ q) := by tauto
+--           rw [← this]
+--           exact add_eq_zero_iff_eq_neg
+--         exact (ha _).mpr x.2
+--       _ = _ := by ring
+-- --Then we show that there exists an isomorphism between $G$ and $ℝˣ$.
+-- noncomputable def MyHom : MyReals ≃* ℝˣ where
+--   --Define f : $G$ $→$ $ℝˣ$   $x$ $↦$ $x + 1$, note that it's well defined since for every x in $G$, $f(x)$ is not equal to 0 by definition of $G$, thus $f(x)$ lies inside $ℝˣ$.
+--   toFun := by
+--     intro x
+--     exact Units.mk0 (x.1 + 1) (by
+--       have ha (x : ℝ) : ¬ (x + 1 = 0) ↔ (x ≠ -1):= by
+--           have (p q : Prop): (p ↔ q) ↔ (¬ p ↔ ¬ q) := by tauto
+--           rw [← this]
+--           exact add_eq_zero_iff_eq_neg
+--       exact (ha _).mpr x.2)
+--   --Note that the inverse function of f is $ℝˣ$ $→$ $G$   $x$ $↦$ $x - 1$.  It's also well defined since for every $x$ in $ℝˣ$, $f(x)$ is not equal to -1 by definition of $ℝˣ$, thus $f(x)$ lies inside $S$.  By checking directly, we can show that it's both the left and right inverse of $f$. This shows that f is inversible.
+--   invFun :=by
+--     intro x
+--     use x.1 - 1
+--     have : x.1 ≠ 0 :=by exact Units.ne_zero x
+--     simp only [ne_eq, sub_eq_neg_self, Units.ne_zero, not_false_eq_true]
+--   left_inv :=by
+--     intro x
+--     simp only [ne_eq, Units.val_mk0, add_sub_cancel_right, Subtype.coe_eta]
+--   right_inv:=by
+--     intro x
+--     simp only [sub_add_cancel, Units.mk0_val]
+--   --Finally, we should prove that f is a homomorphism. For any x y in $G$, we have $f(x * y) = f(x + y + x * y) = x + y + x * y + 1 = (x + 1) * (y + 1) = f(x) * f(y)$.This finishes the proof.
+--   map_mul' :=by
+--     intro x y
+--     dsimp
+--     ext
+--     dsimp
+--     show x.1 + y.1 + x.1 * y.1 + 1 = (x.1 + 1) * (y.1 + 1)
+--     ring
+
+-- def add_subset (r s : ℤ): Set ℤ := {h | ∃ n m : ℤ, h = n * r + m * s}
+
+-- def add_subgroup (r s: ℤ) : AddSubgroup ℤ where
+--   carrier := add_subset r s
+--   --For any $a,b \in G$, there exist $n_{1}, m_{1}, n_{2}, m_{2} \in \Z$
+--   --such that $a = n_{1} r + m_{1}s$ and $b = n_{2} r + m_{2}s$.
+--   --Therefore, $a + b = (n_{1} + n_{2}) r + (m_{1} + m_{2}) s \in G$.
+--   add_mem' := by
+--     intro a b ha hb
+--     rcases ha with ⟨n1, m1, h1⟩
+--     rcases hb with ⟨n2, m2, h2⟩
+--     use n1 + n2, m1 + m2
+--     rw[h1, h2]
+--     ring
+--   --3. We have $0 = 0 r + 0 s \in G$.
+--   zero_mem' := by
+--     use 0, 0
+--     ring
+--   --4. For any $a \in G$, there exist $n, m \in \Z$ such that $a = n r + m s$,
+--   --then $- a  =(- n) r + (- m) s\in G$. Hence $G$ is a subgroup of $\Z$.
+--   neg_mem' := by
+--     intro a ha
+--     rcases ha with ⟨n, m, h⟩
+--     use -n, -m
+--     rw[h]
+--     ring
+
+/-
+Let $R$ be a ring with unit. Then there is a unique homomorphism $f:\mathbb Z\to R$ such that $1\mapsto 1_R$.
+-/
+-- example (R : Type*) [Ring R] : ∃! f : ℤ →+* R, True := by
+--   --Firstly, we show that such $f$ is a morphism.
+--   use {
+--     toFun := fun k ↦ k • 1
+--     --By calculaton, we know that the mapping is a morphism of multiplicative group.
+--     map_mul' := by
+--       simp only [zsmul_eq_mul, Int.cast_mul, mul_one, implies_true]
+--     --By calculaton, we know that the mapping is a morphism of additive group.
+--     map_add' := by
+--       simp only [zsmul_eq_mul, Int.cast_add, mul_one, implies_true]
+--     --By direct check, we have the mapping maps multiplicative identity to multiplicative identity.
+--     map_one' := by
+--       simp only [one_smul]
+--     --By direct check, we have the mapping maps additive identity to additive identity.
+--     map_zero' := by
+--       simp only [zero_smul]
+--   }
+--   --Then, we show that every morphism from $ℤ$ to $R$ is equal to $f$. It's diret result of the fact that the morphism $f$ sends the multiplicative identity 1 to the multiplicative identity of $R$.
+--   simp only [zsmul_eq_mul, mul_one, true_implies, true_and]
+--   intro f
+--   ext a
+--   simp only [eq_intCast]
+
+/-
+Let $R$ be a finite integral domain, prove that $R$ is a field, i.e. $R^\times=R-\{0\}$.
+-/
+--Note that it's the direct result of the fact that any finite calcel monoid with zero is a group with zero. Thus we first show this. Let $M$ be a finite calcel monoid with zero.
+-- def Fintype.groupWithZeroOfCancel' (M : Type*) [CancelMonoidWithZero M] [DecidableEq M] [Fintype M]
+--     [Nontrivial M] : GroupWithZero M :=
+--   { ‹Nontrivial M›,
+--     ‹CancelMonoidWithZero M› with
+--     --For any nonzero element $a$ in $M$, consider the mapping $gₐ$defined by the left multiplication by $a$, we know it's injective by definition, then note that $M$ is finite, then the image of $gₐ$ is of the same cardinality as the cardinality of $M$.Thus 1 is contained in the image of $gₐ$ and we actually find the right inverse of $a$. Similarly we can find a right inverse of $a$ and thus we have $a$ is invertible.
+--     inv := fun a => if h : a = 0 then 0 else Fintype.bijInv (mul_right_bijective_of_finite₀ h) 1
+--     mul_inv_cancel := fun a ha => by
+--       simp only [Inv.inv, dif_neg ha]
+--       exact Fintype.rightInverse_bijInv _ _
+--     inv_zero := by simp [Inv.inv, dif_pos rfl] }
+-- --Once the lemma is proved, note that an integral domain is an mulplicative monoid with zero since its left or right multiplication with a nonzero element is injective, thus by directly applying the lemma, we have the result.
+-- def Fintype.divisionRingOfIsDomain' (R : Type*) [Ring R] [IsDomain R] [DecidableEq R] [Fintype R] :
+--     DivisionRing R where
+--   __ := Fintype.groupWithZeroOfCancel' R
+--   __ := ‹Ring R›
+--   nnqsmul := _
+--   qsmul := _
+-- def Fintype.fieldOfDomain' (R) [CommRing R] [IsDomain R] [DecidableEq R] [Fintype R] : Field R :=
+--   { Fintype.divisionRingOfIsDomain' R, ‹CommRing R› with }
+-- theorem Finite.isField_of_domain' (R) [CommRing R] [IsDomain R] [Finite R] : IsField R := by
+--   cases nonempty_fintype R
+--   exact @Field.toIsField R (@Fintype.fieldOfDomain' R _ _ (Classical.decEq R) _)
+
+/-
+Let $R$ be a ring with identity $1$. Show that the map $f:R\to R$ given by $f(x)=axb$ is an isomorphism iff $ab=ba=1$. [Hint: if $ba\neq 1$, there are infinitely many $c$ that $ac=1$.]
+-/
+-- def IsIsomorphism {R : Type*} [Ring R] (f : R → R) : Prop := ∃ g : R ≃+* R, g.toFun = f
+
+-- example {R : Type*} [Ring R] (a : R) (b : R) : (IsIsomorphism (fun (x : R) ↦ ((a * x * b) : R))) ↔ (a * b = 1 ∧ b * a = 1) := by
+--   unfold IsIsomorphism
+--   --We devide the proof into two part. Firstly, we show that if $f$ is an isomorphism, then $a * b = b * a = 1$.
+--   constructor
+--   · rintro ⟨func, eq⟩
+--     --Firstly, since $f$ is an isomorphism, we have $f(1) = 1$, that is, $a * b = 1$.
+--     simp only [RingEquiv.toEquiv_eq_coe, Equiv.toFun_as_coe, EquivLike.coe_coe] at eq
+--     have h1: ∀ x : R, func x = (fun x => a * x * b) x := by
+--       intro x
+--       apply congr_fun
+--       exact eq
+--     have h2: func 1 = (fun x => a * x * b) 1 := by
+--       apply h1
+--     simp only [map_one, mul_one] at h2
+--     rw [h2]
+--     simp only [true_and]
+--     --Then, calculate $f(b * a) = a * (b * a) * b = f(b) * f(a)$, by simplification, we have $b * a = a * b$.
+--     have: func (b * a) = (fun x => a * x * b) (b * a) := by
+--       apply h1
+--     simp only [map_mul] at this
+--     rw [h1 b ,h1 a] at this
+--     simp only[mul_assoc, h2.symm] at this
+--     simp only [mul_one, one_mul] at this
+--     exact this
+--   · intro h
+--     --We show another direction. Given that $a * b = b * a = 1$, we show that $f$ is an isomorphism.
+--     rcases h with ⟨h1, h2⟩
+--     use {
+--       toFun := fun x => a * x * b,
+--       --$f$ is bijective since $g : R → R , x ↦ b * x * a$ is both the left and right inverse of $f$, this shows that f is invertible and thus bijective.
+--       invFun := fun x => b * x * a,
+--       left_inv := by
+--         intro x
+--         simp
+--         rw [mul_assoc, mul_assoc, h2, mul_one, <-mul_assoc, h2, one_mul]
+--       right_inv := by
+--         intro x
+--         simp only [mul_assoc, h1, h2]
+--         simp [←mul_assoc, h1, h2]
+--       --Then we show that $f$ is a morphism of multiplicative semigroup, since $b * a = 1$, we have $f(x * y) = a * x * y * b = a * x * 1 * y * b = a * x * b * a * x * b = f(x) * f(y)$.
+--       map_mul' :=by
+--         intro x y
+--         simp only
+--         rw[← mul_assoc, mul_assoc ]
+--         nth_rw 1 [← mul_one (a * x)]
+--         rw[← h2]
+--         group
+--       --$f$ is a morphism of additive group comes from the distributive law.
+--       map_add':=by
+--         intro x y
+--         simp only
+--         rw[mul_add,add_mul]
+--     }
+
+/-
+For $n \ge 3$, $sr^i \notin Z(D_{2n})$
+-/
+-- example (n : ℕ) (h : n ≥ 3) (i : ZMod n) : DihedralGroup.sr i ∉ Subgroup.center (DihedralGroup n) := by
+--   --Prove by contradiction. Assume that $sr^i ∈ $the center of $Dₙ$.
+--   by_contra p
+--   --Then any number $sr^i$ is commutative with any elements in $Dₙ$.
+--   apply Subgroup.mem_center_iff.mp at p
+--   --Then choose $r^1 ∈ Dₙ $,we have : $sr^{(i - 1)} = sr^{(i + 1)}$ sine $sr^i * r^1 = r^1 * sr^i$.
+--   have h4 : DihedralGroup.sr (i - 1) = DihedralGroup.sr (i+1) := by
+--     rw [←DihedralGroup.r_mul_sr, p (DihedralGroup.r 1), DihedralGroup.sr_mul_r]
+--   --By injectivity, we have $i + 1 \equiv i - 1 Mod n$ .
+--   simp only [DihedralGroup.sr.injEq] at h4
+--   --Then we get $ 2 \equiv 0 Mod n $ after simplification.
+--   have : (2 : ZMod n) = (0 : ZMod n) := by
+--     calc
+--       _= 1 + (i + 1) - i :=by group
+--       _= 1 + (i - 1) - i :=by rw[← h4]
+--       _= 0 := by group
+--   --This implies n divides 2.
+--   have h5 : n ∣ 2 := by exact (ZMod.natCast_zmod_eq_zero_iff_dvd 2 n).mp this
+--   --Thus $n ≤ 2$.
+--   have : n ≤ 2 := Nat.le_of_dvd (by decide) h5
+--   --This contradicts our assumption.
+--   linarith
+
+-- example {α : Type u_1} [Fintype α] [DecidableEq α] (f : Equiv.Perm α ) (g : Equiv.Perm α )
+-- (hg : Equiv.Perm.IsSwap g): Equiv.Perm.IsSwap (f * g * f⁻¹) := by
+--   -- We have $g$ is a swap, so $g$ has two fixed points.
+--   have : g.support.card = 2 := by
+--     exact card_support_eq_two.mpr hg
+--   -- so $f * g * f⁻¹$ has two fixed points.
+--   have : (f * g * f⁻¹).support.card = 2 := by
+--     rw[Equiv.Perm.card_support_conj]
+--     exact this
+--   -- Therefore, $f * g * f⁻¹$ is a swap.
+--   refine card_support_eq_two.mp ?_
+--   · exact this
+
+-- open Polynomial List Nat Sylow Fintype Setoid Classical BigOperators
+-- variable {G : Type} [Group G] [Fintype G]
+
+-- --**Lemma:** If the number of Sylow p-subgroups is 1, then this Sylow p-subgroup is a normal subgroup.
+-- theorem card_instance_eq  {A : Type*} {i1 : Fintype A} {i2 : Fintype A} : (@card A i1) = (@card A i2) := by
+--   apply @Fintype.card_congr A A i1 i2
+--   rfl
+-- --Prove that the normalizer of a Sylow p-subgroup is the whole group. This is done by showing that the order of the normalizer of a Sylow p-subgroup equals the order of the whole group, implying that the normalizer of the Sylow p-subgroup is the whole group.
+-- theorem only_sylow_subgroup_is_normal  {p: ℕ} [Fact (Nat.Prime p)] (h: card (Sylow p G) = 1) : ∀ (H : Sylow p G), (↑H: Subgroup G).Normal := by
+--   intro H
+--   have h2 := card_sylow_eq_card_quotient_normalizer H
+--   rw [h] at h2
+--   have : (H: Subgroup G).normalizer = ⊤ := by
+--     have : Nat.card ((H: Subgroup G).normalizer) = Nat.card G := by
+--       repeat rw [card_eq_fintype_card]
+--       rw [Subgroup.card_eq_card_quotient_mul_card_subgroup ((H: Subgroup G).normalizer: Subgroup G)]
+--       -- rw [<-h2]
+
+--       have ttt : @card (G ⧸ H.normalizer) (QuotientGroup.fintype H.normalizer) = @card (G ⧸ H.normalizer) (instFintypeQuotientSubgroupNormalizerOfFactPrimeOfSylow H)  := card_instance_eq
+--       rw [ttt]
+--       rw [← h2]
+--       simp
+--     repeat' rw [card_eq_fintype_card] at this
+--     apply Subgroup.eq_top_of_card_eq _ this
+--   exact Subgroup.normalizer_eq_top.mp this
+-- --Prove that if $G$ is a $pq$-group (with $p < q$), then $G$ is not a simple group.
+-- theorem not_simple_pq {G : Type} [Group G] [Fintype G] {p: ℕ} [p_is_p: Fact (Nat.Prime p)]{q : ℕ} [q_is_p: Fact (Nat.Prime q)] (h_not_eq : q > p) ( h' : p.Coprime q) (h : card G = p * q) : ¬ IsSimpleGroup G := by
+--   --**Assumption of Simplicity:** Assume $G$ is a simple group. Then any normal subgroup of $G$ is either $G$ itself or $\{e\}$.
+
+--   by_contra h_contra
+
+--   have qne0 : q ≠ 0 := by
+--     exact Ne.symm (NeZero.ne' q)
+--   have G_normal : ∀ H : Subgroup G, H.Normal → H = ⊥ ∨ H = ⊤ := by
+--     exact fun H a => Subgroup.Normal.eq_bot_or_eq_top a
+--   have cardGProperty : (card G).factorization q = 1 := by
+--     rw[h]
+--     have hq : (p * q).factorization q = (q).factorization q := by
+--       refine factorization_eq_of_coprime_right ?hab ?hpb
+--       · exact h'
+--       · refine (mem_factors ?hpb.hn).mpr ?hpb.a
+--         · exact qne0
+--         constructor
+--         · exact q_is_p.out
+--         exact Nat.dvd_refl q
+--     rw [hq]
+--     refine Prime.factorization_self ?hp
+--     exact q_is_p.out
+--   -- Prove that if the number of Sylow q-subgroups is 1, then this Sylow q-subgroup is a normal subgroup.
+--   let H : (Sylow q G) := by
+--     have : q^1 ∣ card G := by
+--       rw [h]
+--       have : q ^ 1 = q := by
+--         simp
+--       rw [this]
+--       exact Nat.dvd_mul_left q p
+--     let tmp := Sylow.exists_subgroup_card_pow_prime q this
+--     let qgroup := Exists.choose tmp
+--     let hqgroup := Exists.choose_spec tmp
+--     apply Sylow.ofCard qgroup
+--     rw [hqgroup]
+--     rw [← cardGProperty]
+--   /-
+--    **Counting Sylow q-Subgroups:**
+--     - The number of Sylow q-subgroups is congruent to 1 mod $p$. Thus, $p$ divides the number of Sylow q-subgroups minus 1, implying that the number of Sylow q-subgroups is at least $p + 1$.
+--     - The number of Sylow q-subgroups divides $q$, implying that the number of Sylow q-subgroups is at most $q$.
+--   -/
+--   have mod_q : _ := card_sylow_modEq_one q G
+--   have dvd : _ := card_sylow_dvd_index H
+--   have : (H : Subgroup G).index = p := by
+--     have cardHq : card (H: Subgroup G) = q := by
+--       rw [Sylow.card_eq_multiplicity]
+--       rw [cardGProperty]
+--       simp
+--     have := Subgroup.index_mul_card H.toSubgroup
+--     rw [cardHq, h] at this
+--     exact (Nat.mul_left_inj qne0).mp this
+--   rw [this] at dvd
+--   have card_q_1 : card (Sylow q G) = 1 := by
+--     have : card (Sylow q G) = 1 ∨ card (Sylow q G) = p := by
+--       refine (dvd_prime ?pp).mp ?_
+--       · exact p_is_p.out
+--       · exact dvd
+--     obtain h1 | h2 := this
+--     · exact h1
+--     · rw [h2] at mod_q
+--       have dvd: q ∣ p - 1 := by
+--         have dvd: (q : ℤ) ∣ (p : ℤ) - ((1 : ℕ) : ℤ) := by
+--           apply Nat.ModEq.dvd
+--           exact id (ModEq.symm mod_q)
+--         have : (p : ℤ) - ((1 : ℕ) : ℤ) = (((p - 1) : ℕ) : ℤ) := by
+--           simp
+--           have : p ≥ 1 := by exact NeZero.one_le
+--           exact Eq.symm (Int.natCast_pred_of_pos this)
+--         rw [this] at dvd
+--         apply Int.ofNat_dvd.mp dvd
+--       absurd h_not_eq
+--       push_neg
+--       have : q ≤ p - 1 := by
+--         have : p - 1 > 0 := by
+--           have : p > 1 := by
+--             apply Nat.Prime.one_lt p_is_p.out
+--           omega
+--         apply Nat.le_of_dvd this dvd
+--       omega
+--   --**Sylow q-Subgroup Normality:** Since the number of Sylow q-subgroups is 1, the Sylow q-subgroup is a normal subgroup.
+--   have q_normal : ∀ (H : Sylow q G), (↑H: Subgroup G).Normal := by
+--     apply only_sylow_subgroup_is_normal card_q_1
+--   have H_normal : (↑H: Subgroup G).Normal := q_normal H
+--   /-
+--   **Contradictions:**
+--     - If the Sylow q-subgroup is $\{e\}$, then $\text{card}\{e\} = q$, which is a contradiction.
+--     - If the Sylow q-subgroup is $G$, then $\text{card}G = q$, which is a contradiction.
+--   -/
+--   have H_eq_bot_or_top : (↑H: Subgroup G) = ⊥ ∨ (↑H: Subgroup G) = ⊤ := G_normal H H_normal
+--   obtain h₁ | h₂:= H_eq_bot_or_top
+--   · have eq_1: card (H: Subgroup G) = 1 := by
+--       rw [h₁]
+--       simp only [Subgroup.mem_bot, card_ofSubsingleton]
+--     have eq_2: card H = q := by
+--       rw [Sylow.card_eq_multiplicity]
+--       rw [cardGProperty]
+--       simp
+--     rw [eq_2] at eq_1
+--     have : _ := by
+--       have primeCast : _root_.Prime q := by
+--         have := q_is_p.out
+--         exact prime_iff.mp this
+--       apply Prime.ne_one primeCast
+--       exact eq_1
+--     exact this
+--   · have eq_1: card H.toSubgroup = p * q := by
+--       rw [h₂]
+--       rw [← h]
+--       have := Subgroup.card_top (G := G)
+--       convert this
+--     have eq_2: card H = q := by
+--       rw [Sylow.card_eq_multiplicity]
+--       rw [cardGProperty]
+--       simp
+--     rw [eq_2] at eq_1
+--     have hh : p = 1 := by
+--       exact (mul_eq_right qne0).mp (id (Eq.symm eq_1))
+--     have : _ := by
+--       have primeCast : _root_.Prime p := by
+--         have := p_is_p.out
+--         exact prime_iff.mp this
+--       apply Prime.ne_one primeCast
+--       exact hh
+--     exact this
+
+-- variable {R : Type*} [CommRing R]
+-- def radical_ideal (I : Ideal R) : Ideal R where
+--   carrier := { r : R | ∃ n : ℕ, r ^ n ∈ I }
+--   --1. First, prove that for any $a$, if $a^m \in I$ and $b^n \in I$, then $(a+b)^{m+n} \in I$.
+--   add_mem' {a b} ha hb := by
+--     obtain ⟨m, hm⟩ := ha
+--     obtain ⟨n, hn⟩ := hb
+--     use m + n
+--     --Since $R$ is commutative, we have $(a+b)^{m+n} = a^{m+n} + \binom{m+n}{1} a^{m+n-1} b + \ldots + b^{m+n}$.
+--     rw [add_pow]
+--     refine Ideal.sum_mem I ?h.a
+--     intro c
+--     by_cases hc : c ∈ Finset.range (m )
+--     --Since $a^m \in I$ and $b^n \in I$, when $c \leq m$, $\binom{m+n}{c} a^c b^{m+n-c} = \binom{m+n}{c} a^c b^{m-c} b^n \in I$.
+--     · intro h
+--       have c_neq : _ := Finset.mem_range.mp hc
+--       have : b ^ (m + n - c) = b ^ n * b ^ (m - c) := by
+--         have : m + n - c = n + (m - c) := by
+--           calc
+--             m + n - c = n + m - c := by
+--               rw [Nat.add_comm]
+--             _ = n + (m - c) := by
+--               omega
+--         rw [this]
+--         exact pow_add b n (m - c)
+--       have : a ^ c * b ^ (m + n - c) * ↑((m + n).choose c) = ↑((m + n).choose c) * a ^ c * b ^ (m - c) * b ^ n := by
+--         ring_nf
+--         rw [this]
+--         ring
+--       rw [this]
+--       --Since $I$ is an ideal, $\binom{m+n}{c} a^c b^{m+n-c} \in I$.
+--       exact Ideal.mul_mem_left I (↑((m + n).choose c) * a ^ c * b ^ (m - c)) hn
+--     --When $c > m$, $\binom{m+n}{c} a^c b^{m+n-c} = \binom{m+n}{c} a^{c-m} b^{m+n-c} a^m \in I$.
+--     · intro h
+--       have c_neq : m ≤ c := by
+--         have := Finset.mem_range.not.mp hc
+--         exact Nat.le_of_not_lt this
+--       have : a ^ c = a ^ m * a ^ (c - m) := by
+--         have : c = m + (c - m) := by
+--           calc
+--             c = m - m + c := by
+--               refine (Nat.sub_eq_iff_eq_add ?_).mp ?_
+--               · simp only [le_refl]
+--               · simp only [ge_iff_le, le_refl, tsub_eq_zero_of_le]
+--             _ = m + (c - m) := by
+--               refine (Nat.sub_eq_iff_eq_add ?_).mp ?_
+--               · simp only [ge_iff_le, le_refl, tsub_eq_zero_of_le, zero_add, tsub_le_iff_right,
+--                 le_add_iff_nonneg_right, zero_le]
+--               · simp only [ge_iff_le, le_refl, tsub_eq_zero_of_le, zero_add]
+--                 exact Nat.sub_sub_self c_neq
+--         rw [this]
+--         refine Eq.symm (pow_mul_pow_sub a ?_)
+--         · exact Nat.le_add_right m (c - m)
+--       have : a ^ c * b ^ (m + n - c) * ↑((m + n).choose c) = ↑((m + n).choose c) * b ^ (m + n - c) * a ^ (c -m) * a ^ m := by
+--         ring_nf
+--         rw [this]
+--       rw [this]
+--       -- Since $I$ is an ideal, $\binom{m+n}{c} a^c b^{m+n-c} \in I$.
+--       exact Ideal.mul_mem_left I (↑((m + n).choose c) * b ^ (m + n - c) * a ^ (c - m)) hm
+--   --Since $1 \in I$, $1^1 = 1 \in I$.
+--   zero_mem' := by
+--     use 1
+--     simp
+--   -- Since $a^m \in I$, $(c \cdot a)^m = c^m \cdot a^m \in I$.
+--   smul_mem' c a ha := by
+--     obtain ⟨n, hn⟩ := ha
+--     use n
+--     have : (c • a) ^ n = c ^ n • a ^ n := by
+--       exact smul_pow c a n
+--     rw [this]
+--     exact Submodule.smul_mem I (c ^ n) hn
+
+
+-- open BigOperators
+-- open Finset
+-- example (n : ℕ) : ((∑ i in range (n + 1), i ^ 3) : ℚ) = ((n : ℚ) ^ 4 / 4) + ((n : ℚ) ^ 3 / 2) + ((n : ℚ) ^ 2 / 4) := by
+--   -- Using induction, we proceed by induction on $n$.
+--   induction' n with n ih
+--   -- **Base Case:** When $n = 0$, the equation holds.
+--   · simp only [zero_add, range_one, sum_singleton, CharP.cast_eq_zero, ne_eq, OfNat.ofNat_ne_zero,
+--     not_false_eq_true, zero_pow, zero_div, add_zero]
+--   -- **Inductive Step:** Assume the equation holds for $n$, that is, $\sum_{i \in \text{range}(n+1)} i^3 = \frac{n^4}{4} + \frac{n^3}{2} + \frac{n^2}{4}$.
+--   --  We need to prove the equation holds for $n+1$, that is, $\sum_{i \in \text{range}(n+2)} i^3 = \frac{n^4}{4} + \frac{n^3}{2} + \frac{n^2}{4} + n^3 + 3n^2 + 3n + 1$.
+--   · rw[Finset.sum_range_succ]
+--     rw[ih]
+--     /-
+--     Calculate:
+--    $$
+--    \sum_{i \in \text{range}(n+2)} i^3 = \sum_{i \in \text{range}(n+1)} i^3 + (n+1)^3 = \frac{n^4}{4} + \frac{3}{2} n^3 + \frac{13}{4} n^2 + 3n + 1
+--    $$
+--     -/
+--     have h₁ : (n : ℚ) ^ 4 / 4 + (n : ℚ) ^ 3 / 2 + (n : ℚ) ^ 2 / 4 + (↑(n + 1) : ℚ) ^ 3 = (n : ℚ) ^ 4 /4 + (3/2) * (n : ℚ) ^ 3 + (13 / 4) * (n : ℚ) ^ 2 + 3 * (n : ℚ) + 1 := by
+--       push_cast
+--       field_simp
+--       ring
+--     /-
+--     Calculate:
+--    $$
+--    \frac{n^4}{4} + \frac{n^3}{2} + \frac{n^2}{4} + n^3 + 3n^2 + 3n + 1 = \frac{n^4}{4} + \frac{3}{2} n^3 + \frac{13}{4} n^2 + 3n + 1
+--    $$
+--     -/
+--     have h₂ : (↑(n + 1) : ℚ) ^ 4 / 4 + (↑(n + 1) : ℚ) ^ 3 / 2 + (↑(n + 1) : ℚ) ^ 2 / 4 = (n : ℚ) ^ 4 /4 + (3/2) * (n : ℚ) ^ 3 + (13 / 4) * (n : ℚ) ^ 2 + 3 * (n : ℚ) + 1 := by
+--       push_cast
+--       field_simp
+--       ring
+--     -- By comparing the two expressions above, the proof is complete.
+--     rw[h₁]
+--     rw[h₂]
+
+-- structure α where
+-- /- Let $\alpha$ be the set of pairs of real numbers $(x,y)$ with $x \neq 0$ -/
+--   x : ℝ
+--   y : ℝ
+--   h : (x≠0)
+
+-- instance: Mul α where
+-- /- Define the multiplication on $\alpha$ by $(x,y)(z,w)=(xz,xw+y)$. -/
+--   mul :=
+--   fun {x := x, y := y, h := h₁}
+--       {x := z, y := w, h := h₂}  =>
+--     {
+--       x := x * z
+--       y := x * w + y
+--       h := mul_ne_zero h₁ h₂
+--       -- Since $x \neq 0 $, $y \neq 0 $, therefore $x*y \neq 0 $, multiplication is well defined.
+--     }
+
+-- /- Prove that $\alpha$ is a group.-/
+
+-- @[simp]
+-- theorem alpha_mul_def(A B:α) :
+-- /- Notice that the definition of multiplication is reducible. -/
+--   A * B =
+--   {
+--     x := A.x * B.x
+--     y := A.x * B.y + A.y
+--     h := mul_ne_zero A.h B.h
+--   }
+--         := rfl
+
+-- instance: One α where
+-- /- We need to find an $\alpha$ element to act as one.-/
+--   one := {
+--     x := 1
+--     y := 0
+--     h := (zero_ne_one' ℝ).symm -- $1 \neq 0 $
+--   }
+
+-- @[simp]
+-- theorem alpha_one_def:
+-- /- Notice that the definition of one is reducible. -/
+--   (1:α) =
+--   {
+--     x := 1
+--     y := 0
+--     h := (zero_ne_one' ℝ).symm
+--   }
+--         := rfl
+
+-- noncomputable instance: Inv α where
+-- /- We need to find an $\alpha \to \alpha$ function to act as inversion.-/
+--   inv := fun {x,y,h} ↦
+--     {
+--       x := 1/x
+--       y := -y/x
+--       h := one_div_ne_zero h
+--     }
+
+-- @[simp]
+-- theorem alpha_inv_def(A:α):
+-- /- Notice that the definition of inversion is reducible. -/
+--   A⁻¹ =
+--   {
+--     x := 1/A.x
+--     y := -A.y/A.x
+--     h := one_div_ne_zero A.h
+--   }
+--       := rfl
+
+-- noncomputable instance: Group α := by
+--   apply Group.ofLeftAxioms
+--   /- We just need to verify that it satisfies the left axiom of the group. -/
+--   case assoc
+--   . intro a b c
+--     let {x := x₁, y := y₁, h := h₁} := a
+--     let {x := x₂, y := y₂, h := h₂} := b
+--     let {x := x₃, y := y₃, h := h₃} := c
+--     simp[alpha_mul_def]
+--     constructor
+--     . rw[← mul_assoc]
+--     . rw[mul_add,← add_assoc,← mul_assoc]
+--   case one_mul
+--   · intro a
+--     simp[alpha_one_def]
+--   case mul_left_inv
+--   · intro a
+--     have x_neq_zero : a.x ≠ 0 := a.h
+--     simp[alpha_inv_def]
+--     constructor
+--     . exact inv_mul_cancel x_neq_zero
+--     . have : -a.y / a.x = a.x⁻¹ * -a.y := div_eq_inv_mul (-a.y) a.x
+--       rw[this,← mul_add,add_right_neg,mul_zero]
+
+
+-- open Matrix Finset Classical BigOperators
+
+-- /-
+-- 8. Show that $G L_{n}(F)$ is non-abelian for any $n \geq 2$ and any $F$.
+-- -/
+-- example {F : Type*} [Field F]  {n : ℕ} (h : n ≥ 2) : ∃ a b : (GL (Fin n) F) , a * b ≠ b * a := by
+--   let const_n_minus_one : Fin n := ⟨n - 1, by refine Nat.sub_one_lt_of_le (Nat.zero_lt_of_lt h) (le_refl n)⟩
+--   let const_zero : Fin n := ⟨0, by linarith⟩
+--   --Let $c$ be a matrix with diagonal elements and the upper right block to be 1 and $d$ be a matrix with diagonal elements and lower left elements to be 1.
+--   let a : Matrix (Fin n) (Fin n) F := of fun i j ↦ if (i = const_zero ∧ j = const_n_minus_one) then (1 : F) else (0 : F)
+--   let a' : Matrix (Fin n) (Fin n) F := of fun i j ↦ if i = const_zero ∧ j = const_n_minus_one then (-1 : F) else (0 : F)
+--   let b : Matrix (Fin n) (Fin n) F := of fun i j ↦ if (j = const_zero ∧ i = const_n_minus_one) then (1 : F) else (0 : F)
+--   let b' : Matrix (Fin n) (Fin n) F := of fun i j ↦ if (j = const_zero ∧ i = const_n_minus_one) then (-1 : F) else (0 : F)
+--   let c := a + 1
+--   let c':= a'+ 1
+--   let d := b + 1
+--   let d':= b'+ 1
+--   --We show that $c$ and $d$ belongs to $GLₙ(F)$. Let $c'$ be a matrix with diagonal elements 1 and the upper right block -1 and $d$ be a matrix with diagonal elements 1 and lower left elements -1. By calculation we can see that $c' * c = 1$ and $d' * d = 1$, so $c$ and $d$ are invertible and thus belongs to $GLₙ(F)$.
+--   have hc: Invertible (Matrix.det c) := by
+--     apply c.detInvertibleOfLeftInverse c'
+--     unfold_let c c'
+--     simp only [mul_add, add_mul, one_mul, mul_one]
+--     rw [← add_assoc]
+--     apply add_eq_of_eq_sub
+--     simp only [sub_self]
+--     have h1: a + a' = 0 := by
+--       unfold_let a a'
+--       ext i j
+--       simp only [add_apply, of_apply, zero_apply]
+--       by_cases h: i = const_zero ∧ j = const_n_minus_one <;> simp [h]
+--     have h2: a' * a = 0 := by
+--       unfold_let a a'
+--       ext i j
+--       rw [Matrix.mul_apply]
+--       simp only [of_apply, mul_ite, mul_one, mul_zero, zero_apply]
+--       apply Finset.sum_eq_zero
+--       intro k _
+--       simp
+--       intro h1 _ _
+--       rw [h1]
+--       unfold_let
+--       simp only [Fin.mk.injEq]
+--       by_contra p
+--       have: n = 1 := by
+--         have h: 0 + 1 = n - 1 + 1 := by rw [p]
+--         have: n - 1 + 1 = n := by
+--           refine Nat.sub_add_cancel ?h
+--           linarith
+--         rw [this] at h; simp only [zero_add] at h
+--         exact h.symm
+--       linarith
+--     rw[h2, zero_add, h1]
+--   have hd: Invertible (Matrix.det d) := by
+--     apply d.detInvertibleOfLeftInverse d'
+--     unfold_let d d'
+--     simp [add_mul, mul_add]
+--     rw [← add_assoc]
+--     apply add_eq_of_eq_sub
+--     simp only [sub_self]
+--     have h1: b + b' = 0 := by
+--       unfold_let b b'
+--       ext i j
+--       simp only [add_apply, of_apply, zero_apply]
+--       by_cases h: j = const_zero ∧ i = const_n_minus_one <;> simp [h]
+--     have h2: b' * b = 0 := by
+--       unfold_let b b'
+--       ext i j
+--       rw [Matrix.mul_apply]
+--       simp only [of_apply, mul_ite, mul_one, mul_zero, zero_apply]
+--       apply Finset.sum_eq_zero
+--       intro k _
+--       simp only [ite_eq_right_iff, neg_eq_zero, one_ne_zero, imp_false, not_and, and_imp]
+--       intro _ h2 h3
+--       intro _
+--       rw [h3] at h2
+--       absurd h2
+--       unfold_let
+--       simp only [Fin.mk.injEq]
+--       by_contra p
+--       have: n = 1 := by
+--         have h: 0 + 1 = n - 1 + 1 := by rw [p]
+--         have: n - 1 + 1 = n := by
+--           refine Nat.sub_add_cancel ?h
+--           linarith
+--         rw [this] at h; simp only [zero_add] at h
+--         exact h.symm
+--       linarith
+--     rw[h2, zero_add, h1]
+--   let c'' : GeneralLinearGroup (Fin n) F := GeneralLinearGroup.mk' c hc
+--   let d'' : GeneralLinearGroup (Fin n) F := GeneralLinearGroup.mk' d hd
+--   have this1: n - 1 ≠ 0 := fun h => by omega
+--   have this2: 0 ≠ n - 1 := fun h => this1 h.symm
+--   --We show that $c * d ≠ d * c$, let's consider the upper left block, in $c * d$, it's 2. But in $d * c$, it's 1, thus it suffices to support that $c * d ≠ d * c$.
+--   have ne : c * d ≠ d * c := by
+--     by_contra q
+--     apply Matrix.ext_iff.mpr at q
+--     have q1: (c * d) const_zero const_zero = 2 := by
+--       rw [Matrix.mul_apply]
+--       unfold_let c d a b
+--       simp
+--       let s1: Finset _ := {const_n_minus_one, const_zero}
+--       have : s1 ⊆ univ := by simp
+--       unfold_let const_n_minus_one
+--       unfold_let const_zero
+--       rw [(Finset.sum_subset_zero_on_sdiff this ?_ fun _ _ => rfl).symm]
+--       · unfold_let s1
+--         unfold_let const_n_minus_one
+--         unfold_let const_zero
+--         rw [Finset.sum_insert]
+--         simp [h, this1, this2]
+--         norm_num
+--         simp [h]
+--         exact fun h => by omega
+--       · intro x hx
+--         unfold_let s1 const_n_minus_one const_zero at hx
+--         simp at hx
+--         simp [hx]
+--     have q2: (d * c) ⟨0, by linarith⟩ ⟨0, by linarith⟩ = 1 := by
+--       unfold_let d c
+--       simp [add_mul, mul_add]
+--       unfold_let b a const_zero const_n_minus_one
+--       rw [Matrix.mul_apply]
+--       simp [this1, this2]
+--     rw [q] at q1
+--     rw [q1] at q2
+--     have : (2: F) = 1 + 1 := by norm_num
+--     rw [this] at q2
+--     simp at q2
+--   --Thus $c$ $d$ is an example for the noncommutative elements in $GLₙ(F)$, this finishes the proof.
+--   use c'' , d''
+--   have val1: (c'' * d'').1 = c * d := by rfl
+--   have val2: (d'' * c'').1 = d * c := by rfl
+--   by_contra h
+--   absurd ne
+--   rw [←val1, ←val2, h]
+
+-- we define the setoid on Fin n by the relation that two elements $(i,j)$ are related if there exists a $k$ such that $(σ ^ k) i = j$
+-- def pro2221a {n : ℕ} (σ : Equiv.Perm <| Fin n) : Setoid (Fin n) where
+--   r i j := (∃ k : ℤ, (σ ^ k) i = j)
+--   iseqv := {
+--     -- it is obivous that for any $i$, $(σ ^ 0) i = i$
+--     refl := by
+--       intro i
+--       use 0
+--       simp only [zpow_zero, Equiv.Perm.coe_one, id_eq]
+--     -- if there exists a $k$ such that $(σ ^ k) i = j$, then there exists a $-k$ such that $(σ ^ -k) j = i$
+--     symm := by
+--       intro x y hx
+--       obtain ⟨k, hk⟩ := hx
+--       use -k
+--       rw [← hk]
+--       simp only [zpow_neg, Equiv.Perm.inv_apply_self]
+--     -- if there exists a $k$ such that $(σ ^ k) i = j$ and there exists a $l$ such that $(σ ^ l) j = k$, then there exists a $k + l$ such that $(σ ^ (k + l)) i = k$
+--     trans := by
+--       intro x y z hxy hyz
+--       obtain ⟨k, hk⟩ := hxy
+--       obtain ⟨l, hl⟩ := hyz
+--       use k + l
+--       rw [← hl, ← hk]
+--       simp only [Equiv.Perm.mul_apply, zpow_add]
+--       exact Equiv.Perm.zpow_apply_comm σ k l
+--   }
+
+-- def equivi  {n : ℕ} (i : Fin n) (σ : Equiv.Perm <| Fin n) : Set (Fin n):= {j : Fin n | (pro2221a σ).r i j}
+
+-- example {n : ℕ} (i : Fin n) (j : Fin n) (σ : Equiv.Perm <| Fin n) : j ∈ equivi i σ ↔ j ∈ (MulAction.orbit (Subgroup.zpowers σ) i) := by
+--   constructor
+--   -- if $j$ is in the equivalence class of $i$, then there exists a $k$ such that $(σ ^ k) i = j$
+--   · intro h
+--     obtain ⟨k, hk⟩ := h
+--     refine MulAction.mem_orbit_iff.mpr ?mp.intro.a
+--     have : (σ ^ k) ∈ Subgroup.zpowers σ := Subgroup.zpow_mem_zpowers σ k
+--     -- so $j$ ∈ the orbit of $i$
+--     use ⟨ (σ ^ k), this⟩
+--     rw [← hk]
+--     exact rfl
+--   -- if $j$ is in the orbit of $i$, then there exists a $k$ such that $(σ ^ k) i = j$
+--   · intro h
+--     obtain ⟨⟨τ, hk⟩, hk'⟩ := h
+--     obtain ⟨k, hk''⟩ := hk
+--     -- so $j$ ∈ the equivalence class of $i$
+--     have h' : σ ^ k = τ := hk''
+--     have : τ i = j := hk'
+--     rw [← h'] at this
+--     use k
+
+-- theorem Pro12 {G : Type*} [Group G] {p : ℕ} [Fact (Nat.Prime p)] [Finite (Sylow p G)] (P : Sylow p G) (hn : (P : Subgroup G).normalizer.Normal) :
+-- (P : Subgroup G).Normal := by
+--   -- Proof：this is a direct consequence of Sylow's theorem.
+--   exact Sylow.normal_of_normalizer_normal P hn
+
+/-
+Suppose that $R$ is a commutative ring with identity. For a subset $S$ of $R$, let $\operatorname{Span}(S)$ be the minimal ideal containing elements in $S$. Prove that
+
+$\operatorname{Span}(S)=\left\{\sum_{s\in S'}r_ss|S'\text{ is a finite subset of }S,r_s\in R\ \forall s\in S'\right\}.$
+
+In other words, prove that the latter one is an ideal and any ideal containing $S$ also contains the right-hand-side.
+-/
+-- example {R : Type*} [CommRing R] (S : Set R) : (Ideal.span S) = {x : R | ∃ T : Multiset (R × S), x = Multiset.sum (Multiset.map (fun (x : R × S) ↦ (x.1 : R) * (x.2 : R)) T)} := by
+--   set I_set : Set R := {x : R | ∃ T : Multiset (R × S), x = Multiset.sum (Multiset.map (fun (x : R × S) ↦ (x.1 : R) * (x.2 : R)) T)}
+--   --Define $I$ to be the ideal of the latter form.Firstly, we prove that $I$ is an ideal.
+--   let I : Ideal R := {
+--     carrier := I_set
+--     --Note that elements in $I$ are the elements that can be written as the sum of multiple of elements in $S$ and $R$, thus $I$ is closed under addition.
+--     add_mem' := by
+--       intro a b ha hb
+--       rcases ha with ⟨Ta, hTa⟩
+--       rcases hb with ⟨Tb, hTb⟩
+--       use Ta + Tb
+--       rw [hTa, hTb]
+--       simp only [Multiset.map_add, Multiset.sum_add]
+--     --Also, it's clear that 0 is contained in $I$ by definition.
+--     zero_mem' := by
+--       use 0
+--       simp only [Multiset.map_zero, Multiset.sum_zero]
+--     --Also note that $I$ is closed under multiplying elements in $R$. From all these above we may conclude that $I$ is an ideal.
+--     smul_mem' := by
+--       intro c a ⟨Ta, hTa⟩
+--       use Multiset.map (fun x ↦ ⟨c * x.1, x.2⟩) Ta
+--       simp only [smul_eq_mul, Multiset.map_map, Function.comp_apply]
+--       simp_rw [mul_assoc]
+--       rw [hTa]
+--       exact Eq.symm Multiset.sum_map_mul_left
+--   }
+--   apply Set.Subset.antisymm
+--   --Then, we show that $I$ contains the span of $S$. It's clear since $I$ is an ideal that contains $S$.
+--   · show (Ideal.span S) ≤ I
+--     apply Ideal.span_le.mpr
+--     intro s hs
+--     use {⟨1, ⟨s, hs⟩⟩}
+--     simp only [Multiset.coe_singleton, Multiset.map_singleton, one_mul, Multiset.sum_singleton]
+--   --Then we need to show that $I$ is contained by the span of $S$. To achieve this , we show that every ideal that contains $S$ should also contain $I$. That is, we show that for any $a$ $∈$ $I$, we have $a$ $∈$ the span of $S$. It comes from the definition of ideal.
+--   · intro a ⟨T, hT⟩
+--     rw [hT]
+--     apply IsAddSubmonoid.multiset_sum_mem (s := ((Ideal.span S) : Set R)) ?_ (Multiset.map (fun x => x.1 * x.2) T) ?_
+--     exact ⟨((Ideal.span S).toAddSubmonoid).zero_mem, fun ha hb ↦ (by apply ((Ideal.span S).toAddSubmonoid).add_mem ha hb)⟩
+--     intro a ha
+--     simp only [Multiset.mem_map, Prod.exists, Subtype.exists, exists_and_right] at ha
+--     obtain ⟨r, ⟨s, ⟨⟨hs, _⟩, h⟩⟩⟩ := ha
+--     rw [← h]
+--     apply (Ideal.span S).smul_mem _ (Ideal.subset_span hs)
+
+/-
+Let $R$ be a finite integral domain, prove that $R$ is a field, i.e. $R^\times=R-\{0\}$.
+-/
+--Firstlt, we show that any finite calcel monoid with zero is a group with zero.  Let $M$ be a finite calcel monoid with zero.
+-- def Fintype.groupWithZeroOfCancel' (M : Type*) [CancelMonoidWithZero M] [DecidableEq M] [Fintype M]
+--     [Nontrivial M] : GroupWithZero M :=
+--   { ‹Nontrivial M›,
+--     ‹CancelMonoidWithZero M› with
+--     --For any nonzero element $a$ in $M$, consider the mapping $gₐ$defined by the left multiplication by $a$, we know it's injective by definition, then the image of $gₐ$ is of the same cardinality as the cardinality of $M$.Then note that $M$ is finite, Thus $gₐ$ is surjective and so 1 is contained in the image of $gₐ$ . In this way we actually find the right inverse of $a$. Similarly we can find a right inverse of $a$, that is, any non zero element element in $M$ has a right inverse and a left inverse. Thus we have $a$ is invertible. This proves the lemma.
+--     inv := fun a => if h : a = 0 then 0 else Fintype.bijInv (mul_right_bijective_of_finite₀ h) 1
+--     mul_inv_cancel := fun a ha => by
+--       simp only [Inv.inv, dif_neg ha]
+--       exact Fintype.rightInverse_bijInv _ _
+--     inv_zero := by simp [Inv.inv, dif_pos rfl] }
+-- --Once the lemma is proved, note that an integral domain is an mulplicative monoid with zero since its left or right multiplication with a nonzero element is injective. Thus by directly applying the lemma, we have the result.
+-- def Fintype.divisionRingOfIsDomain' (R : Type*) [Ring R] [IsDomain R] [DecidableEq R] [Fintype R] :
+--     DivisionRing R where
+--   __ := Fintype.groupWithZeroOfCancel' R
+--   __ := ‹Ring R›
+--   nnqsmul := _
+--   qsmul := _
+-- def Fintype.fieldOfDomain' (R) [CommRing R] [IsDomain R] [DecidableEq R] [Fintype R] : Field R :=
+--   { Fintype.divisionRingOfIsDomain' R, ‹CommRing R› with }
+-- theorem Finite.isField_of_domain' (R) [CommRing R] [IsDomain R] [Finite R] : IsField R := by
+--   cases nonempty_fintype R
+--   exact @Field.toIsField R (@Fintype.fieldOfDomain' R _ _ (Classical.decEq R) _)
+
+-- theorem pro6083 {G : Type*} [Group G] {p : ℕ} [Fact (Nat.Prime p)] [Finite (Sylow p G)] (P : Sylow p G) :
+-- (↑P : Subgroup G).normalizer.normalizer = (↑P : Subgroup G).normalizer := by
+--   -- This is a direct consequence of the fact that the normalizer of a normal subgroup is the whole group
+--   exact Sylow.normalizer_normalizer P
+
+-- variable {G : Type*} [Group G] (H1 H2 : Subgroup G)
+
+-- theorem proper_subgroups_union_not_whole_group (H1 H2 : Subgroup G)
+--   (hH1 : H1 ≠ ⊤) (hH2 : H2 ≠ ⊤) : (H1 : Set G) ∪  H2 ≠ ⊤ := by
+--     -- We prove this by contradiction
+--     by_contra h
+--     dsimp only [ne_eq] at hH1
+--     dsimp only [ne_eq] at hH2
+--     -- becase $H1 ≠ ⊤$, there exists $x ∈ G$ such that $x ∉ H1$
+--     have X_1 : ∃ x : G, x ∉ H1 := by
+--       refine not_forall.mp ?_
+--       intro h
+--       absurd hH1
+--       ext x
+--       simp
+--       exact h x
+--     -- becase $H2 ≠ ⊤$, there exists $y ∈ G$ such that $y ∉ H2$
+--     have X_2 : ∃ x : G, x ∉ H2 := by
+--       refine not_forall.mp ?_
+--       intro h
+--       absurd hH2
+--       ext x
+--       simp
+--       exact h x
+--     -- let $x$ be an element such that $x ∉ H1$ and $y$ be an element such that $y ∉ H2$
+--     rcases X_1 with ⟨x, hx⟩
+--     rcases X_2 with ⟨y, hy⟩
+--     -- becase G = H1 ∪ H2, $x$  must be in $H2$
+--     have hX: x ∈ H2 := by
+--       have : x ∈ (H1 : Set G) ∪ H2 := by
+--         rw [h]
+--         trivial
+--       have : x ∈ H1 ∨ x ∈ H2 := by
+--         exact this
+--       obtain h1 | h2 := this
+--       · contradiction
+--       · exact h2
+--     -- becase G = H1 ∪ H2, $y$  must be in $H1$
+--     have hY: y ∈ H1 := by
+--       have : y ∈ (H1 : Set G) ∪ H2 := by
+--         rw [h]
+--         trivial
+--       have : y ∈ H1 ∨ y ∈ H2 := by
+--         exact this
+--       obtain h1 | h2 := this
+--       · exact h1
+--       · contradiction
+--     -- becase $x * y ∈ H1 ∪ H2$, $x * y$ must be in $H1$ or $H2$
+--     have : x * y ∈ (H1 : Set G) ∪  H2 := by
+--       rw [h]
+--       trivial
+--     have : x * y ∈ H1 ∨ x * y ∈ H2 := by
+--       exact this
+--     obtain h1 | h2 := this
+--     -- if $x * y ∈ H1$, then $x ∈ H1$ and $y ∈ H1$ which is a contradiction
+--     · have : x ∈ H1 := by
+--         exact (Subgroup.mul_mem_cancel_right H1 hY).mp h1
+--       exact hx this
+--     -- if $x * y ∈ H2$, then $x ∈ H2$ and $y ∈ H2$ which is a contradiction
+--     · have : y ∈ H2 := by
+--         exact (Subgroup.mul_mem_cancel_left H2 hX).mp h2
+--       exact hy this
+
+/-
+3. Prove the following universal property of the direct product $A \times B$ of two groups and its projections $\pi: A \times B \longrightarrow A, \rho: A \times B \longrightarrow B$ : for every homomorphisms $\varphi: G \longrightarrow A$, $\psi: G \longrightarrow B$ of a group $G$, there is a homomorphism $\chi: G \longrightarrow A \times B$ unique such that $\pi \circ \chi=\varphi$ and $\rho \circ \chi=\psi$.
+-/
+-- variable (A : Type*) (B : Type*) (G : Type*) [Group A] [Group B] [Group G]
+-- --Let $f1$ $f2$ be the natural projection from $A × B$ to $A$ and $B$ separately. Let $g1$ $g2$ be a morphism of groups from $G$ to $A$ and $B$ separately.
+-- def f1 := fun (x : A × B) => (x.1 : A)
+-- def f2 := fun (x : A × B) => (x.2 : B)
+-- variable (g1 : G →* A)  (g2 : G →* B)
+-- --We define $g$ : $G → A × B$ , $x ↦ (g1(x),g2(x))$ , we show that it's a morphism of groups.
+-- example : ∃! (g : G →* A × B), (f1 A B) ∘ g = g1 ∧ (f2 A B) ∘ g = g2 :=by
+--   use {
+--     toFun := fun x => (g1 x, g2 x)
+--     --By definition, it sends the indentity to identity.
+--     map_one' :=by
+--       refine Prod.mk_eq_one.mpr ?_
+--       simp only [map_one, and_self]
+--     --By definition, it preserves the multiplicative relation.
+--     map_mul' :=by
+--       simp only [map_mul, Prod.mk_mul_mk, implies_true]}
+--   unfold f1 f2
+--   simp only [MonoidHom.coe_mk, OneHom.coe_mk, and_imp]
+--   --It' clear that the morphism is unique.
+--   refine' ⟨⟨_, _⟩ , _⟩
+--   · ext x
+--     rfl
+--   · ext x
+--     rfl
+--   · intro y h1 h2
+--     ext x <;> dsimp
+--     · rw [← h1]
+--       rfl
+--     · rw [← h2]
+--       rfl
+
+-- variable {G : Type} [Group G] [gsol : IsSolvable G]
+
+-- theorem subgroup_of_solvable_group_is_solvable {H : Subgroup G} : IsSolvable H := by
+--   let f: H →* G := {
+--     toFun := fun ⟨x, _⟩ ↦ x
+--     map_mul' := by simp
+--     map_one' := by simp
+--   }
+--   -- For $H ≤ G, f : H → G, h ↦ h$ is an injective homomorphism
+--   have : Function.Injective f := fun x y ↦ (fun a ↦ SetCoe.ext a)
+--   rcases gsol with ⟨n, gsol⟩
+--   -- $∀ n ∈ ℕ, f_n : H^{(n)} → G^{(n)}, h ↦ h$ is also an injective homomorphism
+--   let p := map_derivedSeries_le_derivedSeries f n
+--   simp_rw [gsol, le_bot_iff] at p
+--   -- $∃ n ∈ ℕ, G^{(n)} = \{1\}$, and by using this $n$, we can show that $H^{(n)} = \{1\}$
+--   use n
+--   exact (Subgroup.map_eq_bot_iff_of_injective (derivedSeries H n) this).mp p
+
+-- theorem quotient_of_solvable_group_is_solvable {H : Subgroup G} [H.Normal] : IsSolvable (G ⧸ H) := by
+--   let f: G →* G ⧸ H := {
+--     toFun := fun g ↦ g
+--     map_mul' := by simp
+--     map_one' := by simp
+--   }
+--   -- For $H ⊴ G, f : G → G / H, g ↦ gH$ is a surjective homomorphism
+--   have : Function.Surjective f := fun x ↦ Quotient.exists_rep x
+--   rcases gsol with ⟨n, gsol⟩
+--   -- $∀ n ∈ ℕ, f_n : G^{(n)} → (G / H)^{(n)}, g ↦ gH$ is also a surjective homomorphism
+--   let p := derivedSeries_le_map_derivedSeries this n
+--   simp_rw [gsol, Subgroup.map_bot, le_bot_iff] at p
+--   -- $∃ n ∈ ℕ, G^{(n)} = \{1\}$, and by using this $n$, we can show that $(G / H)^{(n)} = \{1\}$
+--   use n
+
+
+-- open Classical
+
+-- example {G : Type*} [Group G] {H: Subgroup G} (h: IsCyclic G): IsCyclic H := by
+--   by_cases hbot : H = ⊥
+--   -- If there is just one element in $H$, then trivially $H$ is cyclic
+--   · rw [hbot]
+--     exact Bot.isCyclic
+--   · -- Otherwise, take the generator of $G$ as $g$
+--     rcases h with ⟨g, h'⟩
+--     have abs (k : ℤ) : k.natAbs = k ∨ k.natAbs = -k := Int.natAbs_eq_natAbs_iff.mp rfl
+--     -- $∀ k ∈ \mathbb{Z}, g^k ∈ H ⇒ g^|k| ∈ H$
+--     have abs_pow_mem (k : ℤ) (gpowk : g ^ k ∈ H) : g ^ k.natAbs ∈ H := by
+--       rcases abs k with l | r
+--       · rw [← zpow_natCast, l]
+--         exact gpowk
+--       · simp_rw [← zpow_natCast, r, zpow_neg, inv_mem_iff]
+--         exact gpowk
+--     have : ∃ h ∈ H, h ≠ 1 := by
+--       by_contra hpro
+--       push_neg at hpro
+--       absurd hbot
+--       exact (Subgroup.eq_bot_iff_forall H).mpr hpro
+--     -- $∃ k ∈ \mathbb{Z}_+, g ^ k ∈ H$
+--     have ext_gor : ∃ k : ℕ, 0 < k ∧ g ^ k ∈ H := by
+--       rcases this with ⟨h, ⟨le, ri⟩⟩
+--       rcases h' h with ⟨k, gpowk⟩
+--       use k.natAbs
+--       constructor
+--       · simp only [Int.natAbs_pos]
+--         contrapose! ri
+--         simp only [ri, zpow_zero] at gpowk
+--         exact gpowk.symm
+--       · apply abs_pow_mem k
+--         simp_rw [gpowk]
+--         exact le
+--     -- we take the smallest $k$ and prove that $g ^ k$ is the generator of $H$
+--     let k := Nat.find ext_gor
+--     have kmin (m : ℕ) : m < k → ¬(0 < m ∧ g ^ m ∈ H) := Nat.find_min ext_gor
+--     use ⟨g ^ k, (Nat.find_spec ext_gor).2⟩
+--     -- By apagoge, assume that $x = g ^ l$ is not generated by $g ^ k$. WLOG, assuming that $l ∈ \mathbb{Z}_+$
+--     by_contra hx
+--     rw [not_forall] at hx
+--     rcases hx with ⟨x, xpow⟩
+--     rcases h' x with ⟨l, hl⟩
+--     -- let $r ∈ \mathbb{Z}_+$ be the remainder of $l / k$
+--     let r := l.natAbs % k
+--     have : 0 < r ∧ g ^ r ∈ H := by
+--       constructor
+--       · rw [Nat.pos_iff_ne_zero]
+--         contrapose! xpow
+--         apply Nat.dvd_of_mod_eq_zero at xpow
+--         rcases xpow with ⟨t, ht⟩
+--         rcases abs l with le | ri
+--         · use t
+--           apply Subtype.val_inj.mp
+--           dsimp
+--           rw [← zpow_natCast g k, ← hl, ←le, ht, ← zpow_mul]
+--           rfl
+--         · use -t
+--           apply Subtype.val_inj.mp
+--           dsimp
+--           rw [← zpow_natCast g k, ← hl, ← neg_neg l, ← ri, ht, ← zpow_mul]
+--           simp only [mul_neg, zpow_neg, Nat.cast_mul]
+--       -- We can show that $g ^ r ∈ H$
+--       · have : r + k * (l.natAbs / k) = l.natAbs := Nat.mod_add_div l.natAbs k
+--         have h1 : g ^ l.natAbs ∈ H := by
+--           apply abs_pow_mem l
+--           simp only [hl, SetLike.coe_mem]
+--         have h2 (m : ℕ) : (g ^ k)⁻¹ ^ m ∈ H := by
+--           induction' m with m hm
+--           · rw [pow_zero]
+--             exact Subgroup.one_mem H
+--           · rw [pow_succ]
+--             apply Subgroup.mul_mem H hm
+--             apply Subgroup.inv_mem
+--             exact (Nat.find_spec ext_gor).2
+--         calc
+--         _ = g ^ l.natAbs * (g ^ k)⁻¹ ^ (l.natAbs / k) := by
+--           rw [← this, pow_add g r (k * (l.natAbs / k)), inv_pow, this, ← pow_mul]
+--           group
+--         _ ∈ H := by
+--           apply Subgroup.mul_mem H h1 (h2 (l.natAbs / k))
+--     have rltk : r < k := Nat.mod_lt l.natAbs (Nat.find_spec ext_gor).1
+--     -- The proposition $g ^ r ∈ H$ is contradicted to the fact that $k$ is the smallest
+--     absurd (kmin r rltk) this
+
+-- variable {G : Type*}{G : Type*} [Group G] (H K : Subgroup G)
+
+-- -- First we define the homomorphism from $H × K to G$
+-- def func'  (hn : H.Normal)
+--  (kn : K.Normal) (h : H ⊓ K = ⊥ ) : H × K →* G where
+--   -- The function is defined as the product of the two elements
+--   toFun := fun x => x.1.1 * x.2.1
+--   -- The proof that the function is a homomorphism
+--   map_one' := by
+--   -- $(1,1)$ is the identity element of $H × K$,and $f(1,1) = 1 * 1 = 1$
+--     simp only [Prod.fst_one, OneMemClass.coe_one, Prod.snd_one, mul_one]
+--   -- $(h₁,k₁)$ and $(h₂,k₂)$ are two elements of $H × K$, and $f(h₁,k₁) * f(h₂,k₂) = h₁ * k₁ * h₂ * k₂$
+--   -- $f((h₁,k₁) * (h₂,k₂)) = f(h₁ * h₂, k₁ * k₂) = h₁ * h₂ * k₁ * k₂$
+--   map_mul' := by
+--     simp only [Prod.fst_mul, Submonoid.coe_mul, Subgroup.coe_toSubmonoid, Prod.snd_mul, Prod.forall,
+--       Subtype.forall]
+--     intros h₁ hh k₁ hk h₂ hh' k₂ hk'
+--     have commu: h₂ * k₁ = k₁ * h₂ := by
+--     -- becase $h₂⁻¹ * k₁ * h₂ * k₁⁻¹ ∈ H ⊓ K = ⊥$, we have $h₂ * k₁ = k₁ * h₂$
+--       have : k₁⁻¹ * h₂ * k₁ * h₂⁻¹ ∈ H ⊓ K := by
+--         -- This is becase $h₂⁻¹ * k₁ * h₂ ∈ K$ and $k₁⁻¹ ∈ K$, so $h₂⁻¹ * k₁ * h₂ * k₁⁻¹ ∈ K,& k₁ * h₂ * k₁⁻¹ ∈ H$ , $h₂⁻¹ ∈ H$
+--         constructor
+--         · have H1 : h₂⁻¹ ∈ H := by
+--             refine (Subgroup.inv_mem_iff H).mpr ?_
+--             exact hh'
+--           have H2 := hn.conj_mem h₂ hh' k₁⁻¹
+--           simp only [InvMemClass.coe_inv, inv_inv] at H2
+--           exact mul_mem H2 H1
+--         · have K1 : k₁⁻¹ ∈ K := by
+--             refine (Subgroup.inv_mem_iff K).mpr ?_
+--             exact hk
+--           have K2 := kn.conj_mem k₁ hk h₂
+--           have ans := mul_mem K1 K2
+--           have : k₁⁻¹ * (h₂ * k₁ * h₂⁻¹)  = k₁⁻¹ * h₂ * k₁ * h₂⁻¹ := by group
+--           rw [← this]
+--           exact ans
+--       have : k₁⁻¹ * h₂ * k₁ * h₂⁻¹ = 1 := by
+--         rw [h] at this
+--         exact this
+--       have : h₂ * k₁ = k₁ * h₂ := by
+--         calc
+--           _ = k₁ * (k₁⁻¹ * h₂ * k₁ * h₂⁻¹) * h₂ := by
+--             group
+--           _ = k₁ * 1 * h₂ := by
+--             rw [this]
+--           _ = k₁ * h₂ := by group
+--       exact this
+--     rw[← mul_assoc,← mul_assoc]
+--     have : h₁ * h₂ * k₁ * k₂ = h₁ * (h₂ * k₁) * k₂ := by
+--       group
+--     rw [this]
+--     have : h₁ * k₁ * h₂ * k₂ = h₁ * (k₁ * h₂) * k₂ := by
+--       group
+--     rw[this]
+--     rw[commu]
+
+-- -- we prove that the function is injective
+-- theorem func'_inj [hn: H.Normal] [hk: K.Normal] (h : H ⊓ K = ⊥ ): Function.Injective (func' H K hn hk h) := by
+--   -- Let $(x,y)$ and $(x',y')$ be two elements of $H × K$, and $f(x,y) = f(x',y')$
+--   intros x y hxy
+--   dsimp [func'] at hxy
+--   -- We need to prove that $x = x'$ and $y = y'$
+--   -- we have $x'⁻¹ * x = y'⁻¹ * y$
+--   have : (y.1.1)⁻¹ * x.1.1 * x.2.1  = y.2.1 := by
+--     rw [mul_assoc, hxy]
+--     group
+--   have h1 : (y.1.1)⁻¹ * x.1.1 = y.2.1 * x.2.1⁻¹ := by
+--     rw [ ← this]
+--     group
+--   have h2 : (y.1.1)⁻¹ * x.1.1 ∈ H := by
+--     have t1 : (y.1.1)⁻¹ ∈ H := by
+--       refine (Subgroup.inv_mem_iff H).mpr ?_
+--       exact y.1.2
+--     have t2 := x.1.2
+--     exact (Subgroup.mul_mem_cancel_right H t2).mpr t1
+--   have h3 : y.2.1 * x.2.1⁻¹ ∈ K := by
+--     have t1 : x.2.1⁻¹ ∈ K := by
+--       refine (Subgroup.inv_mem_iff K).mpr ?_
+--       exact x.2.2
+--     have t2 := y.2.2
+--     exact (Subgroup.mul_mem_cancel_left K t2).mpr t1
+--   -- so we have $x'⁻¹ * x ∈ H$ and $y'⁻¹ * y ∈ K$ that is to say $x'⁻¹ * x ∈ H ⊓ K = ⊥$ and $y'⁻¹ * y ∈ H ⊓ K = ⊥$
+--   have h4 : (y.1.1)⁻¹ * x.1.1 ∈ H ⊓ K := by
+--     constructor
+--     · exact h2
+--     · rw[h1]
+--       exact h3
+--   have h5 : (y.1.1)⁻¹ * x.1.1 = 1 := by
+--     rw [h] at h4
+--     exact h4
+--   have h6 :  y.2.1 * x.2.1⁻¹ = 1 := by
+--     rw [← h1]
+--     rw [h5]
+--   have h5' : x.1.1 = y.1.1 := by
+--     calc
+--       _ = (y.1.1) * (y.1.1⁻¹ * x.1.1) := by
+--         group
+--       _ = y.1.1 * 1 := by
+--         rw [h5]
+--       _ = y.1.1 := by group
+--   have h6' : x.2.1 = y.2.1 := by
+--     symm
+--     calc
+--       _ = (y.2.1 * x.2.1⁻¹) * x.2.1 := by
+--         group
+--       _ = 1 * x.2.1 := by
+--         rw [h6]
+--       _ = x.2.1 := by group
+--   ext
+--   · exact h5'
+--   · exact h6'
+
+-- -- we prove that the function is surjective
+-- theorem func'_sur [H.Normal] [K.Normal] (hHK : ∀ (x : G), ∃ h : H, ∃ k : K, x = h * k) : Function.Surjective (func' H K hn hk h) := by
+--   intro x
+--   -- this is becase $∀ (x : G), ∃ h : H, ∃ k : K, x = h * k$
+--   have : ∃ h : H, ∃ k : K, x = h * k := by
+--     exact hHK x
+--   rcases this with ⟨h, k, hx⟩
+--   use ⟨h, k⟩
+--   dsimp [func']
+--   symm
+--   exact hx
+
+
+-- -- if a homomorphism is injective and surjective, then it is an isomorphism
+-- noncomputable def hom_to_iso {G H : Type*} [Group G] [Group H] (α : G →* H) (surj : Function.Surjective α) (inj : Function.Injective α) : G ≃* H where
+--   toFun := by
+--     intro x
+--     use α x
+--   invFun := by
+--     intro y
+--     exact Classical.choose (surj y)
+--   left_inv := by
+--     intro x
+--     show Classical.choose (surj (α x)) = x
+--     have : α (Classical.choose (surj (α x))) = α x := by
+--       apply Classical.choose_spec (surj (α x))
+--     exact inj this
+--   right_inv := by
+--     intro y
+--     show α (Classical.choose (surj y)) = y
+--     exact Classical.choose_spec (surj y)
+--   map_mul' := by
+--     intro x y
+--     show α (x * y) = α x * α y
+--     simp only [map_mul]
+
+-- -- so we have the isomorphism from $H × K$ to $G$
+-- noncomputable def inviso {G : Type*} [Group G] (H K : Subgroup G) [hn: H.Normal] [hk: K.Normal] (h : H ⊓ K = ⊥ ) (hHK : ∀ (x : G), ∃ h : H, ∃ k : K, x = h * k)
+--   : (H × K) ≃* G := hom_to_iso (func' H K hn hk h) (func'_sur H K hHK) (func'_inj H K h)
+
+/-
+49. Prove that for any integer $n \geq 3, S_{n}$ has a subgroup isomorphic with $D_{2n}$.
+-/
+-- variable (n : ℕ) (h : n ≥ 3)
+-- example : ∃ (h : Subgroup (Equiv.Perm (Fin n))), Nonempty (DihedralGroup n ≃* h) := by
+--   cases' n with n'
+--   · simp at h
+--   let n := n' + 1
+--   --Define a morphism $f$ : $D_{2n}$ $→$ $S_{n}$ , that sends $r$ to the cycle that sends $i$ to $i+1$ for $i < n$ and sends $n$ to 1 and sends $s$ to the element in $S_{n}$ that sends $i$ to $n-i$ for $i ≤ n$. It can be checked that this morphism is well defined.
+--   let f : DihedralGroup n →* Equiv.Perm (Fin n) := {
+--     toFun := fun
+--       | .r x => .addLeft x
+--       | .sr x => .trans (.neg _) (.addLeft (-x))
+--     map_one' := by simp [DihedralGroup.one_def]
+--     map_mul' := fun x y ↦ by
+--       cases x <;> cases y <;> (ext; simp)
+--       all_goals congr 1; abel
+--   }
+--   --We show this mapping is injective.
+--   have hf : Function.Injective f := by
+--     refine (injective_iff_map_eq_one f).mpr ?_
+--     intro a hfa
+--     cases' a with a a <;> simp [f, Equiv.ext_iff] at hfa
+--     -- If $f(a)=1$, then $a$ can't be written as a power of $r$ that is not equal to one by definition.
+--     · subst hfa
+--       exact rfl
+--     -- If $a$ can be written as form of $sr^i$ for some integer $i < n$, then $i$ is nonzero by definition. It's also clear that in the case $i ≠ 0$, $f(sr^i) = f(s)f(r^i)$ is nonzero by definition.
+--     · by_cases ha : a = 0
+--       · subst ha
+--         specialize hfa 1
+--         simp at hfa
+--         absurd hfa
+--         exact @ZMod.neg_one_ne_one _ ⟨h⟩
+--       · specialize hfa 0
+--         simp [ha] at hfa
+--   --Note that the Image of a morphism of group is also a group, thus $D_{2n}$ is isomorphic to some subgroup of $S_{n}$.
+--   exact ⟨f.range, ⟨MonoidHom.ofInjective hf⟩⟩
+
+-- open Classical
+
+-- example {G : Type*} [Group G] {H: Subgroup G} (h: IsCyclic G): IsCyclic H := by
+--   by_cases hbot : H = ⊥
+--   -- If there is just one element in $H$, then trivially $H$ is cyclic
+--   · rw [hbot]
+--     exact Bot.isCyclic
+--   · -- Otherwise, take the generator of $G$ as $g$
+--     rcases h with ⟨g, h'⟩
+--     have abs (k : ℤ) : k.natAbs = k ∨ k.natAbs = -k := Int.natAbs_eq_natAbs_iff.mp rfl
+--     -- $∀ k ∈ \mathbb{Z}, g^k ∈ H ⇒ g^|k| ∈ H$
+--     have abs_pow_mem (k : ℤ) (gpowk : g ^ k ∈ H) : g ^ k.natAbs ∈ H := by
+--       rcases abs k with l | r
+--       · rw [← zpow_natCast, l]
+--         exact gpowk
+--       · simp_rw [← zpow_natCast, r, zpow_neg, inv_mem_iff]
+--         exact gpowk
+--     have : ∃ h ∈ H, h ≠ 1 := by
+--       by_contra hpro
+--       push_neg at hpro
+--       absurd hbot
+--       exact (Subgroup.eq_bot_iff_forall H).mpr hpro
+--     -- $∃ k ∈ \mathbb{Z}_+, g ^ k ∈ H$
+--     have ext_gor : ∃ k : ℕ, 0 < k ∧ g ^ k ∈ H := by
+--       rcases this with ⟨h, ⟨le, ri⟩⟩
+--       rcases h' h with ⟨k, gpowk⟩
+--       use k.natAbs
+--       constructor
+--       · simp only [Int.natAbs_pos]
+--         contrapose! ri
+--         simp only [ri, zpow_zero] at gpowk
+--         exact gpowk.symm
+--       · apply abs_pow_mem k
+--         simp_rw [gpowk]
+--         exact le
+--     -- we take the smallest $k$ and prove that $g ^ k$ is the generator of $H$
+--     let k := Nat.find ext_gor
+--     have kmin (m : ℕ) : m < k → ¬(0 < m ∧ g ^ m ∈ H) := Nat.find_min ext_gor
+--     use ⟨g ^ k, (Nat.find_spec ext_gor).2⟩
+--     -- By apagoge, assume that $x = g ^ l$ is not generated by $g ^ k$. WLOG, assuming that $l ∈ \mathbb{Z}_+$
+--     by_contra hx
+--     rw [not_forall] at hx
+--     rcases hx with ⟨x, xpow⟩
+--     rcases h' x with ⟨l, hl⟩
+--     -- let $r ∈ \mathbb{Z}_+$ be the remainder of $l / k$
+--     let r := l.natAbs % k
+--     have : 0 < r ∧ g ^ r ∈ H := by
+--       constructor
+--       · rw [Nat.pos_iff_ne_zero]
+--         contrapose! xpow
+--         apply Nat.dvd_of_mod_eq_zero at xpow
+--         rcases xpow with ⟨t, ht⟩
+--         rcases abs l with le | ri
+--         · use t
+--           apply Subtype.val_inj.mp
+--           dsimp
+--           rw [← zpow_natCast g k, ← hl, ←le, ht, ← zpow_mul]
+--           rfl
+--         · use -t
+--           apply Subtype.val_inj.mp
+--           dsimp
+--           rw [← zpow_natCast g k, ← hl, ← neg_neg l, ← ri, ht, ← zpow_mul]
+--           simp only [mul_neg, zpow_neg, Nat.cast_mul]
+--       -- We can show that $g ^ r ∈ H$
+--       · have : r + k * (l.natAbs / k) = l.natAbs := Nat.mod_add_div l.natAbs k
+--         have h1 : g ^ l.natAbs ∈ H := by
+--           apply abs_pow_mem l
+--           simp only [hl, SetLike.coe_mem]
+--         have h2 (m : ℕ) : (g ^ k)⁻¹ ^ m ∈ H := by
+--           induction' m with m hm
+--           · rw [pow_zero]
+--             exact Subgroup.one_mem H
+--           · rw [pow_succ]
+--             apply Subgroup.mul_mem H hm
+--             apply Subgroup.inv_mem
+--             exact (Nat.find_spec ext_gor).2
+--         calc
+--         _ = g ^ l.natAbs * (g ^ k)⁻¹ ^ (l.natAbs / k) := by
+--           rw [← this, pow_add g r (k * (l.natAbs / k)), inv_pow, this, ← pow_mul]
+--           group
+--         _ ∈ H := by
+--           apply Subgroup.mul_mem H h1 (h2 (l.natAbs / k))
+--     have rltk : r < k := Nat.mod_lt l.natAbs (Nat.find_spec ext_gor).1
+--     -- The proposition $g ^ r ∈ H$ is contradicted to the fact that $k$ is the smallest
+--     apply (kmin r rltk) at this
+--     exact this
+
+/-
+$G$ is the set $\{x \in \mathbb{R}: x \neq-1\}$ with the operation $x * y=x+y+x y$. Show that $f(x)=x-1$ is an isomorphism from the multiplication group $\mathbb{R}^{\times}$ to $G$.
+-/
+-- def MyReals := {x : ℝ // x ≠ -1}
+-- --Firstly, we show that G is a group.Denote the multiplication law in $G$ as $*$ and we omit the usual mulplication sign in $ℝ$.
+-- noncomputable instance : Group MyReals where
+--   --We show that for every $x$ $y$ in G, $x * y$ is also in G, that is, $x * y ≠ -1$.
+--   mul := by
+--     have ha (x : ℝ) : ¬ (x + 1 = 0) ↔ (x ≠ -1):= by
+--       have (p q : Prop): (p ↔ q) ↔ (¬ p ↔ ¬ q) := by tauto
+--       rw [← this]
+--       exact add_eq_zero_iff_eq_neg
+--     intro ⟨x, hx⟩ ⟨y, hy⟩
+--     use x + y + x * y
+--     intro h
+--     --Prove by contradiction. Note that if $x * y = -1$, then by definition, we have $(x + 1)(y + 1) = 0$. This contrdicts the definition of $x$ and $y$.
+--     have : (x + 1) * (y + 1) = 0 := by
+--       calc
+--       _ = (x + y + x * y) + 1 := by ring
+--       _ = _ := by rw [h, add_left_neg]
+--     simp only [mul_eq_zero] at this
+--     simp_rw [← ha x] at hx
+--     simp_rw [← ha y] at hy
+--     tauto
+--   --Note that the composition law we defined is associative.
+--   mul_assoc := by
+--     intro x y z
+--     apply Subtype.val_inj.mp
+--     show (x.1 + y.1 + x.1 * y.1) + z.1 + (x.1 + y.1 + x.1 * y.1) * z.1 = x.1 + (y.1 + z.1 + y.1 * z.1) + x.1 * (y.1 + z.1 + y.1 * z.1)
+--     ring
+--   --We claim that  0 to be the identity element in this group.
+--   one := by
+--     use 0
+--     simp only [ne_eq, zero_eq_neg, one_ne_zero, not_false_eq_true]
+--   --It can be checked that for every x in G , $0 + x + 0x = x$, this shows that 0 is the left identity element.
+--   one_mul := by
+--     intro x
+--     apply Subtype.val_inj.mp
+--     show 0 + x.1 + 0 * x.1 = x.1
+--     ring
+--   --It can also be checked that for every x in G, $x + 0 + x0 = x$, this shows that 0 is the right identity element.
+--   mul_one := by
+--     intro x
+--     apply Subtype.val_inj.mp
+--     show x.1 + 0 + x.1 * 0 = x.1
+--     ring
+--   --For any $x$ in $G$, note that $\frac{-x}{x + 1}$ is the left inverse of x. Firstly, it can be checked that it's not equal to -1 for every $x$ in $G$.
+--   inv x := by
+--     use - x.1 / (x.1 + 1)
+--     by_contra h
+--     have : x.1 = (-1 + x.1) :=by
+--       calc
+--       _= (x.1 + 1)* (-1) * (-1) +(-1):= by ring_nf
+--       _= (x.1 + 1) * (-x.1 / (x.1 + 1)) * (-1) +(-1):=by rw[h]
+--       _= _ := by
+--         rw [mul_div_cancel₀]
+--         simp only [ne_eq, mul_neg, mul_one, neg_neg]
+--         apply add_comm
+--         have ha (x : ℝ) : ¬ (x + 1 = 0) ↔ (x ≠ -1):= by
+--           have (p q : Prop): (p ↔ q) ↔ (¬ p ↔ ¬ q) := by tauto
+--           rw [← this]
+--           exact add_eq_zero_iff_eq_neg
+--         exact (ha _).mpr x.2
+--     absurd this
+--     simp only [ne_eq, self_eq_add_left, neg_eq_zero, one_ne_zero, not_false_eq_true]
+--   --Then, by calculation, we can get that $\frac{-x}{x + 1} * x = 0$, thus it's the left inverse of $x$.
+--   mul_left_inv := by
+--     intro x
+--     dsimp [Inv.inv]
+--     unfold HMul.hMul
+--     unfold instHMul
+--     dsimp
+--     have: x = ⟨x.1, x.2⟩ := by rfl
+--     nth_rw 1 [this]
+--     simp only [ne_eq]
+--     apply Subtype.val_inj.mp
+--     simp only
+--     show - x.1 / (x.1 + 1) + x.1 + (- x.1 / (x.1 + 1)) * x.1 = 0
+--     calc
+--       _= (x.1 + 1) * (- x.1 / (x.1 + 1))  + x.1 :=by ring
+--       _= (- x.1) + x.1 :=by
+--         rw [mul_div_cancel₀]
+--         have ha (x : ℝ) : ¬ (x + 1 = 0) ↔ (x ≠ -1):= by
+--           have (p q : Prop): (p ↔ q) ↔ (¬ p ↔ ¬ q) := by tauto
+--           rw [← this]
+--           exact add_eq_zero_iff_eq_neg
+--         exact (ha _).mpr x.2
+--       _ = _ := by ring
+-- --Then we show that there exists an isomorphism between $G$ and $ℝ^{×$.
+-- noncomputable def MyHom : MyReals ≃* ℝˣ where
+--   --Define f : $G$ $→$ $ℝ^{×}$   $x$ $↦$ $x + 1$, note that it's well defined since for every x in $G$, $f(x)$ is not equal to 0 by definition of $G$, thus $f(x)$ lies inside $ℝˣ$.
+--   toFun := by
+--     intro x
+--     exact Units.mk0 (x.1 + 1) (by
+--       have ha (x : ℝ) : ¬ (x + 1 = 0) ↔ (x ≠ -1):= by
+--           have (p q : Prop): (p ↔ q) ↔ (¬ p ↔ ¬ q) := by tauto
+--           rw [← this]
+--           exact add_eq_zero_iff_eq_neg
+--       exact (ha _).mpr x.2)
+--   --Note that the inverse function of f is $ℝ^{×}$ $→$ $G$   $x$ $↦$ $x - 1$.  It's also well defined since for every $x$ in $ℝ^{×}$, $f(x)$ is not equal to -1 by definition of $ℝ^{×}$, thus $f(x)$ lies inside $S$.  By checking directly, we can show that it's both the left and right inverse of $f$. This shows that f is invertible.
+--   invFun :=by
+--     intro x
+--     use x.1 - 1
+--     have : x.1 ≠ 0 :=by exact Units.ne_zero x
+--     simp only [ne_eq, sub_eq_neg_self, Units.ne_zero, not_false_eq_true]
+--   left_inv :=by
+--     intro x
+--     simp only [ne_eq, Units.val_mk0, add_sub_cancel_right, Subtype.coe_eta]
+--   right_inv:=by
+--     intro x
+--     simp only [sub_add_cancel, Units.mk0_val]
+--   --Finally, we should prove that f is a homomorphism. For any x y in $G$, we have $f(x * y) = f(x + y + xy) = x + y + xy + 1 = (x + 1)(y + 1) = f(x) * f(y)$.This finishes the proof.
+--   map_mul' :=by
+--     intro x y
+--     dsimp
+--     ext
+--     dsimp
+--     show x.1 + y.1 + x.1 * y.1 + 1 = (x.1 + 1) * (y.1 + 1)
+--     ring
+
+/-
+1.4.2. 设 $n$ 是正整数, 试证: 满足方程 $x^{n}=1$ 的复数的集合 $G$ 在通常乘法下是一个 $n$ 阶循环群.
+-/
+-- variable (n : ℕ) [h : NeZero n]
+-- --Deonte the set of complex numbers satisfying $x^{n}=1$ to be $A$.
+-- def A := {z : ℂ | z ^ n = 1}
+-- --We firstly show that $A$ is a group with the original multiplication law.
+-- noncomputable instance : Group (A n) where
+--   --By definition, $A$ is closed under multiplication.
+--   mul := fun x y ↦ ⟨x.1 * y.1, by
+--     have : (x.1 * y.1) ^ n = 1 := by
+--       calc
+--         _= (x.1 ^ n) * (y.1 ^ n) := mul_pow (↑x) (↑y) n
+--         _= 1 := by rw[x.2, y.2,one_mul]
+--     exact this⟩
+--   --By definition, this multiplication law is associative.
+--   mul_assoc := by
+--     intro x y z
+--     apply Subtype.val_inj.mp
+--     show x.1 * y.1 * z.1 = x.1 * (y.1 * z.1)
+--     rw[mul_assoc]
+--   --Note that $1^{n}=1$, thus $A$ asmits an identity.
+--   one := ⟨1 ,one_pow n⟩
+--   one_mul :=by
+--     intro x
+--     apply Subtype.val_inj.mp
+--     show 1 * x.1 = x.1
+--     simp only [one_mul]
+--   mul_one :=by
+--     intro x
+--     apply Subtype.val_inj.mp
+--     show x.1 * 1 = x.1
+--     simp only [mul_one]
+--   --Also note that if $x^{n}=1$ , then $(x⁻¹)^{n}=1$, thus every element in $A$ has its inverse.
+--   inv := fun x ↦ ⟨x.1⁻¹, by
+--     have : (x.1⁻¹) ^ n = 1 := by
+--       calc
+--        _= (x.1 ^ n)⁻¹ := inv_pow (↑x) n
+--        _=_:=by
+--         rw[x.2]
+--         simp only [inv_one]
+--     exact this⟩
+--   mul_left_inv := by
+--     intro x
+--     apply Subtype.val_inj.mp
+--     show (x.1)⁻¹ * x.1 = 1
+--     apply inv_mul_cancel
+--     by_contra ha
+--     have : x.1 ^ n = 0 :=by
+--       simp only [ha, pow_eq_zero_iff', ne_eq, true_and]
+--       exact h.out
+--     rw [x.2] at this
+--     simp only [one_ne_zero] at this
+--   npow := by
+--     intro m ⟨x, hx⟩
+--     use x ^ m
+--     calc
+--       _ = x ^ (n * m) := by
+--         rw [mul_comm]
+--         exact (pow_mul x m n).symm
+--       _ = _ := by
+--         rw [pow_mul, hx, one_pow]
+--   npow_zero := by intros; rfl
+--   npow_succ := by intros; rfl
+
+-- example : IsCyclic (A n) := by
+--   refine { exists_generator := ?exists_generator }
+--   --We show that any element in $A$ can be written as an integer power of $e^{\frac{2πi}{n}}$.
+--   use ⟨Complex.exp ((2 * Real.pi * Complex.I)/n),by
+--     --Firstly, note that the n power of $e^{\frac{2πi}{n}}$ is 1, thus $e^{\frac{2πi}{n}}$ is indeed an element of $A$.
+--     have : (Complex.exp ((2 * Real.pi * Complex.I)/n)) ^ n = 1 :=by
+--       calc
+--         _= Complex.exp ((2 * Real.pi * Complex.I)/n * n) :=by
+--           rw [← Complex.exp_nat_mul, mul_comm]
+--         _= Complex.exp ((2 * Real.pi * Complex.I)) := by
+--           congr 1
+--           field_simp
+--         _=_:=Complex.exp_two_pi_mul_I
+--     exact this⟩
+--   intro x
+--   let x' : ℂˣ := ⟨x, x⁻¹, by
+--     apply Complex.mul_inv_cancel
+--     by_contra hd
+--     have : x.1 ^ n = 0 := by
+--       refine (pow_eq_zero_iff ?hn).mpr hd
+--       exact Ne.symm (NeZero.ne' n)
+--     rw [x.2] at this
+--     simp only [one_ne_zero] at this
+--   , by
+--       apply inv_mul_cancel
+--       by_contra hd
+--       have : x.1 ^ n = 0 := by
+--         refine (pow_eq_zero_iff ?hn).mpr hd
+--       rw [x.2] at this
+--       simp only [one_ne_zero] at this
+--       ⟩
+--   have : x' ∈ rootsOfUnity ⟨n,Fin.size_pos'⟩ ℂ :=by
+--     refine (mem_rootsOfUnity ⟨n, Fin.size_pos'⟩ x').mpr ?_
+--     simp only [PNat.mk_coe]
+--     ext
+--     push_cast
+--     show x.1 ^ n = 1
+--     exact x.2
+--   --For any $x$ belongs to $A$, note that any element of $ℂ$ that is invertible and satisfies $x^{n}=1$ is of the form $e^{\frac{2πik}{n}}$, where k is some integer. Thus we get our result.
+--   apply (Complex.mem_rootsOfUnity ⟨n, Fin.size_pos'⟩ x').mp at this
+--   rcases this with ⟨a,ha,hb⟩
+--   simp only [PNat.mk_coe] at ha
+--   simp only [PNat.mk_coe] at hb
+--   have : (2 * ↑Real.pi * Complex.I / ↑n).exp ^ a = x :=by
+--     calc
+--       _= (2 * ↑Real.pi * Complex.I * (1 / ↑n)).exp ^ a :=by
+--         simp only [one_div]
+--         exact rfl
+--       _= (2 * ↑Real.pi * Complex.I * (a / ↑n)).exp :=by
+--         rw [← Complex.exp_nat_mul,mul_comm]
+--         congr 1
+--         have : (1 / (n : ℂ)) * a = (a / (n : ℂ)) :=by
+--           simp only [one_div]
+--           apply mul_comm
+--         rw [mul_assoc,this]
+--       _=_:=hb
+--   use a
+--   simp only [zpow_natCast]
+--   ext
+--   rw[← this]
+--   set t : ℂ := (2 * Real.pi * Complex.I / n).exp with ht
+--   simp_rw [← ht]
+--   rfl
+
+/-
+1.59 If $F_{n}$ denotes the $n$th term of the Fibonacci sequence $0,1,1,2,3,5,8, \ldots$, prove, for all $n \geq 1$, that $F_{n+1}$ and $F_{n}$ are relatively prime.
+-/
+-- def problem (n : ℕ) : Nat.Coprime (Nat.fib n) (Nat.fib (n + 1)) :=by
+--   --Prove by induction.
+--   cases n with
+--   --If $n = 0$, then the result is direct.
+--   | zero => simp only [Nat.fib_zero, zero_add, Nat.fib_one, Nat.coprime_one_right_eq_true]
+--   --If $n > 0$, then let $fₙ$ denote the nth Fibonacci number, we have if $f_{n+1}$= f_{n-1}$ + $f_{n}$ and $f_{n}$ have a greatest common divisor $q$ that is greater than one, then $f_{n-1}$ and $f_{n}$ also share the common divisor $q$, that contradicts our induction hypothesis.
+--   | succ n' =>
+--     let p' := problem n'
+--     rw[Nat.fib_add_two]
+--     simp only [Nat.coprime_add_self_right]
+--     apply p'.symm
+
+/-
+1.69 Prove that an integer $M \geq 0$ is the $\mathrm{lcm}$ of $a_{1}, a_{2}, \ldots, a_{n}$ if and only if it is a common multiple of $a_{1}, a_{2}, \ldots, a_{n}$ which divides every other common multiple.
+-/
+-- def lcm : List ℕ → ℕ := List.foldr Nat.lcm 1
+
+-- lemma lcm_equiv_def (L : List ℕ) : (∀ x ∈ L, x ∣ lcm L) ∧ (∀ (M : ℕ), (∀ x ∈ L, x ∣ M) → lcm L ∣ M) := by
+--   --Denote the set of numbers as $L$. Prove by induction.
+--   cases L with
+--   --If $L$ is an empty set, then the result is clear.
+--   | nil =>
+--     unfold _root_.lcm
+--     unfold List.foldr
+--     simp only [List.not_mem_nil, Nat.dvd_one, false_implies, implies_true, isUnit_one, IsUnit.dvd,
+--       imp_self, and_self]
+--   --If $L$ is not empty. Let $L$ be a set that has exactly one more element $a$ than another set $L'$.
+--   | cons a L' =>
+--     let p' := lcm_equiv_def L'
+--     simp only [List.mem_cons, Nat.lcm_one_left, forall_eq_or_imp, and_imp]
+--     constructor
+--     --Firstly, note that the leat common multiplier of the set of numbers $L$ can be regarded as the least common multiplier of $a$ and $lcm(L')$, thus we have $a | lcm(L)$ and $lcm(L') | lcm(L)$.
+--     · constructor
+--       · unfold _root_.lcm
+--         unfold List.foldr
+--         exact Nat.dvd_lcm_left a (List.foldr Nat.lcm 1 L')
+--         --Moreover, by induction hypothesis, we have for any x in $L'$, $x | lcm(L)$, this finishes our proof of the first goal.
+--       · let p2 := p'.1
+--         intro a ha
+--         let h1 := p2 a ha
+--         unfold _root_.lcm
+--         unfold List.foldr
+--         unfold _root_.lcm at h1
+--         apply Nat.dvd_trans h1
+--         apply Nat.dvd_lcm_right
+--     --Then,we show our another result.Let $M$ be a natural number. Note that if $a$ and $lcm(L')$ both divides $M$, then we can conclude that $lcm(L)$ divides $M$, where $a | M$ is our assumption and $lcm(L') | M$ comes from our induction hypothesis.
+--     · intro m hm ha
+--       unfold _root_.lcm
+--       unfold List.foldr
+--       apply Nat.lcm_dvd_iff.mpr
+--       simp only [hm, true_and]
+--       let p'2 := p'.2
+--       unfold _root_.lcm at p'2
+--       exact p'2 m ha
+
+/-
+1.7.1. 设 $G$ 作用在集合 $S$ 上, 对任意 $a, b \in S$, 若存在 $g \in G$ 使得 $g a=b$,则 $G_{a}=g^{-1} G_{b} g$. 换句话说, 同一轨道中元的固定子群彼此共轭.
+-/
+-- example (G : Type*) [Group G] (S : Type*) [MulAction G S] (a b : S) (g : G) (h : g • a = b) : (MulAction.stabilizer G a) = Subgroup.map (MulAut.conj (G := G) g⁻¹) (MulAction.stabilizer G b) := by
+--   --Let $x$ be an element in $G$.
+--   refine Subgroup.ext ?h
+--   intro x
+--   constructor
+--   --Firstly, if $x$ is in the stabilizer of $a$.
+--   simp only [map_inv, Subgroup.mem_map, MonoidHom.coe_coe, MulAut.conj_inv_apply]
+--   intro h1
+--   simp at h1
+--   --We have $g * x * g⁻¹$ is a stabilizer of $b$ by definition.
+--   have h1 : g * x * g⁻¹ ∈ MulAction.stabilizer G b :=by
+--     simp only [MulAction.mem_stabilizer_iff]
+--     rw[← h, mul_smul, inv_smul_smul, mul_smul, h1]
+--   --Note that $x$ is the conjugation of $g * x * g⁻¹$ by $g⁻¹$, thus we have $x$ is an elelment in $g^{-1} G_{b} g$.
+--   use g * x * g⁻¹
+--   simp only [h1, true_and]
+--   rw[← mul_assoc,← mul_assoc,inv_mul_cancel_right,mul_left_inv, one_mul]
+--   --Conversely, if $x$ belongs to $g^{-1} G_{b} g$.
+--   intro hx
+--   --Then we have $x • a = a = (g⁻¹ * g * x * g⁻¹ * g) • a = (g⁻¹) • (g * x * g⁻¹) •b = (g⁻¹) • b = a$, thus $x$ belongs to the stabilizer of $a$.
+--   have : x • a = a :=by
+--     calc
+--       _= (g⁻¹ * g * x * g⁻¹ * g) • a:= by
+--         apply congr _ rfl
+--         simp
+--       _= (g⁻¹) • (g * x * g⁻¹) •b := by
+--         simp_rw[← h, smul_smul, ← mul_assoc]
+--       _= (g⁻¹) • b := by
+--         simp at hx
+--         obtain ⟨y, hy₁, hy₂⟩ := hx
+--         simp [smul_eq_mul, smul_left_cancel_iff, ← hy₂]
+--         group
+--         exact hy₁
+--       _= a := by
+--         rw[← h]
+--         simp
+--   exact this
