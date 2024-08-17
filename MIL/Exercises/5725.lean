@@ -1,7 +1,5 @@
 import Mathlib
 
-set_option profiler true
-
 open BigOperators
 
 def List.FinInter {α β : Type*} [DecidableEq α] [Fintype β] (A : β → Finset α)(L : List β) : Finset α :=
